@@ -1,0 +1,14 @@
+
+The library defines the type csi which is either the type ptrdiff_t
+or if it is being compiled as a mex function it is mwSignedIndex.
+
+Allocate function cs_spalloc is in cs_util
+
+To compile a binary with UMFPACK, all the following libraries are necessary:
+    amd
+    colamd
+    cholmod
+    umfpack
+    blas
+    suitesparseconfig
+To include umfpack.h, one must include SuiteSparse_config.h and amd.h

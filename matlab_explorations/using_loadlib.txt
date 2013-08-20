@@ -1,0 +1,23 @@
+Compiling a shared library
+    each object has to be compiled with the flag "-fPIC" compiler independent flag
+    the linker has to be given the flags "-W1,soname,<thesoname>" the commas are not
+    a typo. 
+    The linker flags will be passed by gcc -W1,soname,<thesoname> -o <theoutputname>
+    When we load the file we tend to get a library name error that changes the '.' in the
+    filename for 0x2E
+
+    An alternative for osx is to build the dylib file with the command 
+        gcc -dynamiclib -undefined suppress -flat_namespace -o <all the objects> -o <dylibname.dylib>
+    in this case we call the loadlibary function without extension loadlibrary('dylibmame','dylib.h')
+
+    Passing vectors as pointers
+    one can pass an array defined in matlab as input for a double* argument. 
+    If however, we want to modify the data then we need to build an libpointer object 
+    E.G:
+
+    A  = [1:100]
+    lp = libpointer('doublePtr',A)
+    calllib('libname','funcname',lp)
+
+    #At this point A is not modified 
+    #but lp.Value contains the modified vector
