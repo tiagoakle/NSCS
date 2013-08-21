@@ -1,14 +1,16 @@
 CC=llvm-gcc-4.2
 CFLAGS=-fPIC
 LDFLAGS=-W1,-soname,liblinear_solver.so.1
-OBJECTDIR=./build
+
+TESTDIR=./test
+TESTSOURCES=test_util.c test_linear_solver.c 
+TESTOBJECTS=./build/test/test_util.o ./build/test/test_linear_solver.o
 TESTOBJECTDIR=./build/test
+
 SRCDIR=./src
 SOURCES=linear_solvers.c
-TESTSOURCES=test_linear_solver.c
-TESTDIR=./test
 OBJECTS=$(SOURCES:.c=.o)
-TESTOBJECTS=$(TESTSOURCES:.c=.o)
+OBJECTDIR=./build
 
 STATICLOPENBLAS=/Users/tiago/OpenBLAS/libopenblas.a
 
@@ -50,7 +52,7 @@ $(TESTOBJECTDIR)/%.o: $(TESTDIR)/%.c
 $(DYLIB): $(OBJECTDIR)/$(OBJECTS)
 	$(CC) $(DYLIBFLAGS) -g $(OBJECTDIR)/*.o -o $(LIBOUTDIR)/$(DYLIB) $(LIBDIR) $(LIBS)
 
-test: $(TESTOBJECTDIR)/$(TESTOBJECTS) $(DYLIB)
+test: $(TESTOBJECTS) $(DYLIB)
 	$(CC) $(TESTOBJECTDIR)/*.o -o testprog $(LIBDIR) $(LIBS) -llinear_solvers
 
 clean:

@@ -1,12 +1,13 @@
 function [d,CF] = solve_linear_system(H,mu,A,b,c,tau,kappa,r1,r2,r3,r4,r5,pars)
     %Debug flag 
     print_t = false;
+    print_c = true;
     %Get the size of the problem
     [m,n] = size(A);
     
-    slv_aug = factor();
+    [slv_aug,h_free] = c_factor();
+     mat_slv_aug           = factor();
 
-%`[d,CF] = slvhomkkt(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,...r1,r2,r3,r4,r5,pars);
     %Eventually this will be implemented in C
     %Solves  [    A -b      ] dy   r1
     %        [-A'    c -I   ] dx   r2
@@ -53,10 +54,10 @@ function [d,CF] = solve_linear_system(H,mu,A,b,c,tau,kappa,r1,r2,r3,r4,r5,pars)
     % tm_1 =  [     A]^{-1}[b ]    
     %         [A' -mH]     [-c] 
     % and keep it to calculate h_1b and r_7b more efficiently
-
-    if(print_t) fprintf('Size [b;-c]: %i\n',size([b;-c],1)); end;
+    if(print_t) fprintf('Norm [b;-c] %g\n',norm([b;-c])); end;
     tm_1   = slv_aug([b;-c]); 
-    if(print_t) fprintf('Norm tm1 %f\n',norm(tm_1)); end;
+    if(print_t) fprintf('Norm tm1 %g\n',norm(tm_1)); end;
+    if(print_c) tm1b = mat_slv_aug([b;-c]); fprintf('Difference between solutions to tm %g\n', norm(tm_1-tm1b)); end;
     h_1b   = tm_1'*[-b;-c];
     r_7b   = tm_1'*[r1;r7];
  
@@ -82,7 +83,7 @@ function [d,CF] = solve_linear_system(H,mu,A,b,c,tau,kappa,r1,r2,r3,r4,r5,pars)
     n_res_5 = norm(mu*H*dx+ds-r5);
     n_res_4 = norm(kappa*dt+tau*dk-r4);
 
-    if(print_t) fprintf('Residuals r1 %f, r2 %f, r3 %f, r5 %f, r4 %f \n',n_res_1,n_res_2,n_res_3,n_res_5,n_res_4); end;
+    if(print_t) fprintf('Residuals r1 %g, r2 %g, r3 %g, r5 %g, r4 %g \n',n_res_1,n_res_2,n_res_3,n_res_5,n_res_4); end;
     %Solves  [    A -b      ] dy   r1
     %        [-A'    c -I   ] dx   r2
     %        [b' -c'     -1 ] dt = r3
@@ -108,6 +109,67 @@ function [d,CF] = solve_linear_system(H,mu,A,b,c,tau,kappa,r1,r2,r3,r4,r5,pars)
     %This variable is used to accelerate the BFGS heuristic 
     CF = [];
     
+    %Free the factorization
+    h_free();
+  
+    function [h_solver,h_free] = c_factor()
+        %Allocate the variables that will hold 
+        %the factorization 
+        lppI     = libpointer('int32Ptr',1);
+        lppP     = libpointer('int32Ptr',1);
+        lppV     = libpointer('doublePtr',1.0);
+        numeric  = libpointer('voidPtr');
+        
+        %Convert H and A to triplet form
+        [aI,aJ,aV] = find(A);
+        nnzA       = size(aI,1);
+        [hI,hJ,hV] = find(H);
+        nnzH       = size(hI,1);
+        finalnnz   = m + 2*nnzA+nnzH;
+        
+        delta = 1.e-10;
+        gamma = 1.e-10;
+        
+        %Do this to make sure that the 
+        %representation is actually updated 
+        hI(1:end) = hI(1:end)-1;
+        hJ(1:end) = hJ(1:end)-1;
+        aI(1:end) = aI(1:end)-1;
+        aJ(1:end) = aJ(1:end)-1;
+
+          %Call the method that builds the CCO kkt system 
+          ret     = calllib('liblinear_solvers','form_kkt_system',mu,hI,hJ,hV,nnzH,aI,aJ,aV,nnzA,m,n,delta,gamma,lppI,lppP,lppV);
+          fprintf('ret from form_kkt_system %i\n',ret);
+          %Call the method that makes the factorization
+          ret     = calllib('liblinear_solvers','factor_kkt_system',numeric,lppI,lppP,lppV,n+m);
+          fprintf('ret from factor_kkt_system %i\n',ret);
+          h_solver = @solve;
+          h_free   = @free;
+
+          function x = solve(rhs)
+             %Call the function that solves the system 
+            lpX     = libpointer('doublePtr',zeros(size(rhs,1),1));
+
+            %Make sure the vector is actually formed
+            %this matlab absurdity is nuts
+            rhs2 = zeros(size(rhs));
+            for iter = 1:size(rhs,1)
+                rhs2(iter) = rhs(iter);
+            end
+
+            ret     = calllib('liblinear_solvers','solve_factored_system',numeric,lppI,lppP,lppV,rhs2,lpX);
+            fprintf('ret from sove_factored_system %i\n',ret);
+            fprintf('Norm of the solution %g\n', norm(lpX.value));
+            x       = lpX.Value;
+          end 
+
+          function free()
+            %Function that calls umfpack to free the variables
+            ret     = calllib('liblinear_solvers','free_factorization',numeric,lppI,lppP,lppV);
+          end
+
+    end
+
 
     function h_solver = factor()
        %Factorizes
@@ -125,8 +187,8 @@ function [d,CF] = solve_linear_system(H,mu,A,b,c,tau,kappa,r1,r2,r3,r4,r5,pars)
         linopts_ut.UT = true;
 
         d = diag(D);
-        if(print_t) fprintf('min(d): %f, max(d): %f \n',full(min(d)),full(max(d))); end;
-        if(print_t) fprintf('min diag L: %f, max |L|: %f \n', min(abs(full(diag(L)))),full(max(max(abs(L))))); end;
+        if(print_t) fprintf('min(d): %g, max(d): %g \n',full(min(d)),full(max(d))); end;
+        if(print_t) fprintf('min diag L: %g, max |L|: %g \n', min(abs(full(diag(L)))),full(max(max(abs(L))))); end;
 
         function y = solve(L,D,P,y)
         
@@ -134,7 +196,7 @@ function [d,CF] = solve_linear_system(H,mu,A,b,c,tau,kappa,r1,r2,r3,r4,r5,pars)
             y_t = y;
             %PLDL'P'x = b 
             if(print_t) fprintf('Size rhs: %i\n', size(y,1)); end;
-            if(print_t) fprintf('Norm rhs: %f\n', norm(y)); end;
+            if(print_t) fprintf('Norm rhs: %g\n', norm(y)); end;
             y  = (P*(L'\(D\(L\(P'*y)))));
            % d = diag(D);
            % y = P'*y;

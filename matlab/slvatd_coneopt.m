@@ -9,8 +9,14 @@ r5 = -v.s;
 % another option that could be investigated:
 %r5 = v.mu * v.F{2};
 
-[d,CF] = slvhomkkt(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,...
+%[d_2,CF] = slvhomkkt(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,...
+%    -v.rP,-v.rD,-v.rG,r4,r5,pars);
+
+[d,CF] = solve_linear_system(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,...
     -v.rP,-v.rD,-v.rG,r4,r5,pars);
+
+%Compare the two solutions
+%fprintf('Differences: dy %f, dx %f, dt %f, ds %f, dk%f \n', norm(d{3}-d_2{3}), norm(d{1}-d_2{1}), norm(d{2}-d_2{2}), norm(d{4}-d_2{4}), norm(d{5}-d_2{5}));
 
 % counting:
 R.dat.nkktsolves = R.dat.nkktsolves  + 1;

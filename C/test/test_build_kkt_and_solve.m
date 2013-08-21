@@ -4,16 +4,21 @@
 %add the path to the matlab function that makes the call
 addpath '../src'
 
-%Select the size of the problem to generate
-m = 10;
-n = 100;
-density = 0.7;
-%Generate a constraint matrix
-A = sprand(m,n,density);
-L = sparse(n,n);
-%Generate a lower bidiagonal matrix L and form H = LL'
-L = diag(sparse(rand(n,1)))+diag(sparse(rand(n-1,1)),-1);
-H = L*L';
+load 'minentropy_system'
+[m,n] = size(A);
+%%Select the size of the problem to generate
+%m = 10;
+%n = 100;
+%density = 0.7;
+%%Generate a constraint matrix
+%A = sprand(m,n,density);
+%L = sparse(n,n);
+%%Generate a lower bidiagonal matrix L and form H = LL'
+%L = diag(sparse(rand(n,1)))+diag(sparse(rand(n-1,1)),-1);
+%H = L*L';
+
+
+
 
 %Choose the regularization paramters and centrality value
 mu = 0.5;
@@ -55,13 +60,15 @@ fprintf('factor_kkt_system returned %i\n',ret);
 %------- Part 4 ----------------------------------------
 %Call the routine to solve 
 %int solve_factored_system(void** Numeric, int** Ai, int** Ap, double** Av, int m, int n, int nnz, double* rhs, double* x);
-lpX     = libpointer('doublePtr',zeros(n+m,1));
-b       = randn(n+m,1); %Make a random rhs
-ret     = calllib('liblinear_solvers','solve_factored_system',numeric,lppI,lppP,lppV,b,lpX);
+lpX       = libpointer('doublePtr',zeros(n+m,1));
+rhs       = zeros(n+m,1); %Make a random rhs
+rhs(1:m)  = b;
+rhs(m+1:end) = -c;
+ret       = calllib('liblinear_solvers','solve_factored_system',numeric,lppI,lppP,lppV,rhs,lpX);
 fprintf('solve_factored_system returned %i\n',ret);
 %compare the solution to the matlab solution
 
-x_2    = KKT2\b;
+x_2    = KKT2\rhs;
 fprintf('Solution difference %g\n',norm(lpX.value-x_2));
 
 %------- Part 5 --------------------------------------

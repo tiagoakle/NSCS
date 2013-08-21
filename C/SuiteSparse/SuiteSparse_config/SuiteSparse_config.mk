@@ -106,8 +106,12 @@ INSTALL_INCLUDE = /usr/local/include
 # naming the BLAS and LAPACK library (*.a or *.so) files.
 
 # This is probably slow ... it might connect to the Standard Reference BLAS:
-BLAS = -lblas -lgfortran
+#BLAS = -lblas -lgfortran
 LAPACK = -llapack
+
+#XXX
+#OPTION FOR OPEN BLAS (ADDED AKLE)
+BLAS = -lopenblas
 
 # NOTE: this next option for the "Goto BLAS" has nothing to do with a "goto"
 # statement.  Rather, the Goto BLAS is written by Dr. Kazushige Goto.
@@ -181,7 +185,7 @@ METIS = ../../metis-4.0/libmetis.a
 #               included in UMFPACK_CONFIG, then UMFPACK  does not rely on
 #               CHOLMOD, CAMD, CCOLAMD, COLAMD, and METIS.
 
-UMFPACK_CONFIG =
+UMFPACK_CONFIG = 
 
 # uncomment this line to compile UMFPACK without CHOLMOD:
 # UMFPACK_CONFIG = -DNCHOLMOD
