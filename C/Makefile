@@ -1,16 +1,19 @@
 CC=llvm-gcc-4.2
 CFLAGS=-fPIC
-LDFLAGS=-W1,-soname,liblinear_solver.so.1
 
 TESTDIR=./test
-TESTSOURCES=test_util.c test_linear_solver.c 
-TESTOBJECTS=./build/test/test_util.o ./build/test/test_linear_solver.o
+TESTSOURCES=test_util.c test_linear_solver.c test_smatvec.c main_tests.c
+TESTOBJECTS=$(TESTSOURCES:.c=.o)
 TESTOBJECTDIR=./build/test
 
 SRCDIR=./src
-SOURCES=linear_solvers.c
+SOURCES=linear_solvers.c nscs_sp.c smatvec.c 
 OBJECTS=$(SOURCES:.c=.o)
 OBJECTDIR=./build
+
+NSCSDIR=./src
+NSCSSOURCES=nscs.c nscs_sp.c
+NSCSOBJECTS= $(NSCSSOURCES:.c=.o)
 
 STATICLOPENBLAS=/Users/tiago/OpenBLAS/libopenblas.a
 
@@ -28,20 +31,22 @@ LIBS=-lumfpack \
 	  -lsuitesparseconfig \
 	  -lamd \
 	  -lcsparse \
-	  -lopenblas 
+	  -lopenblas
 
 IDIRS= -I ./SuiteSparse/AMD/Include \
        -I ./SuiteSparse/SuiteSparse_config \
        -I ./SuiteSparse/UMFPACK/Include \
 	   -I ./SuiteSparse/CSparse/Include \
-	   -I ./Include
+	   -I ./Include \
+	   -I ../../ \
+	   -I ./test
 
 DYLIB=liblinear_solvers.dylib
 LIBOUTDIR=./Lib
 DYLIBFLAGS=-dynamiclib -undefined error 
 
 
-all: $(DYLIB) test
+all: $(DYLIB)
 
 $(OBJECTDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -g $(IDIRS) -c $< -o $@
@@ -49,14 +54,18 @@ $(OBJECTDIR)/%.o: $(SRCDIR)/%.c
 $(TESTOBJECTDIR)/%.o: $(TESTDIR)/%.c
 	$(CC) $(CFLAGS) -g $(IDIRS) -c $< -o $@
 
-$(DYLIB): $(OBJECTDIR)/$(OBJECTS)
-	$(CC) $(DYLIBFLAGS) -g $(OBJECTDIR)/*.o -o $(LIBOUTDIR)/$(DYLIB) $(LIBDIR) $(LIBS)
+$(DYLIB): $(addprefix $(OBJECTDIR)/,$(OBJECTS))
+	$(CC) $(DYLIBFLAGS) -g $^ -o $(LIBOUTDIR)/$@ $(LIBDIR) $(LIBS)
 
-test: $(TESTOBJECTS) $(DYLIB)
-	$(CC) $(TESTOBJECTDIR)/*.o -o testprog $(LIBDIR) $(LIBS) -llinear_solvers
+nscs: $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS))
+	$(CC) $(DYLIBFLAGS) -g $^ -o $(LIBOUTDIR)/nscs.dylib $(LIBDIR) $(LIBS)
+
+test: $(addprefix $(TESTOBJECTDIR)/,$(TESTOBJECTS)) $(DYLIB)
+	$(CC) $(addprefix $(TESTOBJECTDIR)/,$(TESTOBJECTS)) -g -o testprog $(LIBDIR) $(LIBS) -llinear_solvers -lcheck
 
 clean:
-	rm $(OBJECTDIR)/$(OBJECTS)
-	rm $(LIBOUTDIR)/$(DYLIB)
-	rm $(TESTOBJECTDIR)/$(TESTOBJECTS)
+	rm $(addprefix $(OBJECTDIR)/,$(OBJECTS))
+	rm $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS))
+	rm $(LIBOUTDIR)/*.dylib
+	rm $(addprefix $(TESTOBJECTDIR)/,$(TESTOBJECTS)) 
 	rm testprog

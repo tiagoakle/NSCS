@@ -8,8 +8,8 @@ function write_matrix_to_csv(name, A)
 
     fid = fopen(name,'w');
     fprintf(fid,'%d,%d,%d\n',m,n,nnzA);
-    for i=1:n
-        fprintf(fid,'%f,%f,%f\n',full(I(i)-1),full(J(i)-1),full(V(i)));
+    for i=1:nnzA
+        fprintf(fid,'%d,%d,%f\n',full(I(i)-1),full(J(i)-1),full(V(i)));
     end
     fclose(fid);
 end

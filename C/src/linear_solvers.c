@@ -1,6 +1,9 @@
 #include "linear_solvers.h"
 #include "umfpack.h"
 #include <stdio.h>
+#include "nscs_sp.h"
+#include <OpenBlas/cblas.h>
+#include "smatvec.h"
 
 //This function builds the compressed column row structure and 
 //    then calls umfpack to solve. Ax=b
@@ -74,7 +77,22 @@ int solve_linear_system(double* x, int* I, int* J, double* V, int nnz, double *b
 }
 
 //Forms the KKT system in the allocated working vectors I,J,V 
-int form_kkt_system_triplets( double mu, int* hI, int* hJ, double* hV, int nnzH, int* aI, int* aJ, double* aV, int nnzA, int m, int n, double delta, double gamma, int* I, int* J, double* V)
+int form_kkt_system_triplets( double mu,\
+                              int* hI,\
+                              int* hJ,\
+                              double* hV,\
+                              int nnzH,\
+                              int* aI,\
+                              int* aJ,\
+                              double* aV,\
+                              int nnzA,\
+                              int m,\
+                              int n,\
+                              double delta,\
+                              double gamma,\
+                              int* I,\
+                              int* J,\
+                              double* V)
 { 
 
     int nnz;
@@ -123,7 +141,22 @@ int form_kkt_system_triplets( double mu, int* hI, int* hJ, double* hV, int nnzH,
 }
 
 //This function forms the matrix to factorize and stores it in cco form in Ai, Aj, Av
-int form_kkt_system( double mu, int* hI, int* hJ, double* hV, int nnzH, int* aI, int* aJ, double* aV, int nnzA, int m, int n, double delta, double gamma, int** Ai, int** Ap, double** Av)
+int form_kkt_system( double mu,\
+                     int* hI,\
+                     int* hJ,\
+                     double* hV,\
+                     int nnzH,\
+                     int* aI,\
+                     int* aJ,\
+                     double* aV,\
+                     int nnzA,\
+                     int m,\
+                     int n,\
+                     double delta,\
+                     double gamma,\
+                     int** Ai,\
+                     int** Ap,\
+                     double** Av)
 {
     //[delta I          A ]
     //[A'      -muH-gammaI]
@@ -159,7 +192,6 @@ int form_kkt_system( double mu, int* hI, int* hJ, double* hV, int nnzH, int* aI,
 //the numeric factorization in Numeric
 int factor_kkt_system(void** Numeric, int* Ai, int* Ap, double* Av, int n)
 {
-
  
      int status;
      //Now call umfpack to solve
@@ -168,8 +200,7 @@ int factor_kkt_system(void** Numeric, int* Ai, int* Ap, double* Av, int n)
      void *Symbolic;
      //Do the symbolic analysis
      status = umfpack_di_symbolic (n, n, Ap, Ai, Av, &Symbolic, null, null) ;
-
-     printf("Symbolic  KKT SYSTEM %i\n",status);     
+     
      if(status != 0)
      {
         if(Symbolic != NULL)
@@ -184,8 +215,7 @@ int factor_kkt_system(void** Numeric, int* Ai, int* Ap, double* Av, int n)
      { 
          //Do the numeric analysis
          status = umfpack_di_numeric (Ap, Ai, Av, Symbolic, Numeric, NULL,NULL) ;
-
-         printf("Numeric  KKT SYSTEM %i\n",status);     
+         
          if(status != 0) //If there was an error free the stuff
          { 
              umfpack_di_free_symbolic (&Symbolic) ;
@@ -227,36 +257,233 @@ int free_factorization(void* Numeric, int* Ai, int* Ap, double* Av)
  
 }
 
-//This is for debugging
-int build_and_solve_linear_system( double mu, int* hI, int* hJ, double* hV, int nnzH, int* aI, int* aJ, double* aV, int nnzA, int m, int n, double delta, double gamma, double* sol, double * rhs)
-{
-    int* Ai = NULL;
-    int* Ap = NULL;
-    double* Av = NULL;
-    void* Numeric = NULL;
 
-     int ret = form_kkt_system(mu, hI, hJ, hV, nnzH, aI, aJ, aV, nnzA, m, n, delta, gamma, &Ai, &Ap, &Av);
-  //   int nnz = m + 2*nnzA+nnzH;
-  //       ret = solve_linear_system(x, Ai, Aj, Av, nnz, rhs ,n +m)
-    printf("Form KKT SYSTEM %i\n",ret);     
-     if (ret != 0)
-        sol[0] = -1000+ret;     
-     ret = factor_kkt_system(&Numeric, Ai, Ap, Av, n+m);
-    printf("Factor KKT SYSTEM %i\n",ret);     
-     if (ret != 0)
-        sol[1] = -2000+ret;
-     ret = solve_factored_system(Numeric, Ai, Ap, Av, rhs, sol);
-    printf("Solve KKT SYSTEM %i\n",ret);     
-     if (ret != 0)
-        sol[2] = -3000+ret;
-     //ret = free_factorization(Numeric, Ai,Ap,Av);
-    return ret;
-}
+ //This is for debugging
+ int loop(double *x, double* b, int n)
+ {
+     int i = 0;
+     for(i=0;i<n;i++)
+         x[i] = b[i];
+ }
 
-//This is for debugging
-int loop(double *x, double* b, int n)
-{
+//The following functions should substitute the solve KKT system call
+//function [d,CF] = solve_linear_system(H,mu,A,b,c,tau,kappa,r1,r2,r3,r4,r5,pars)
+
+
+//Forms and solves the KKT system 
+/**
+ * This function forms the regularized KKT system and uses UMFPACK to solve it.
+ *   [dI   A -b      ] dy   r1
+ *   [-A' gI  c -I   ] dx   r2
+ *   [b' -c'     -1 ] dt = r3
+ *   [    mH   I    ] ds   r4
+ *   [       k    t ] dk   r5
+ *
+ * @param mu
+ * @param H the hessian of the barrier at the present primal point
+ * @param A the constraint matrix
+ * @param b the right hand side of the equality constraint
+ * @param c the objective function 
+ * @param tau (t) in the matrix above 
+ * @param kappa (k) in the matrix above
+ * @param delta (d) above
+ * @param gamma (g) above
+ * @param r1
+ * @param r2
+ * @param r3
+ * @param r4
+ * @param r5
+ * @param dy pointer to a vec structure
+ * @param dx 
+ * @param dt 
+ * @param ds 
+ * @param dk 
+ */
+int solve_kkt_system(double mu,\
+                     spmat H,\
+                     spmat A,\
+                     vec b,\
+                     vec c,\
+                     double tau,\
+                     double kappa,\
+                     double delta,\
+                     double gamma,\  
+                     vec r1,\
+                     vec r2,\
+                     double r3,\
+                     vec r4,\
+                     double r5,\
+                     vec dy,\
+                     vec dx,\
+                     double* dt,\
+                     vec ds,\
+                     double* dk )
+{ 
+   // Solves  [    A -b      ] dy   r1
+   //         [-A'    c -I   ] dx   r2
+   //         [b' -c'     -1 ] dt = r3
+   //         [    mH   I    ] ds   r4
+   //         [       k    t ] dk   r5
+
+
+    //
+    //Build the KKT system    
+    //
+    //    %Forms 
+   //         [    A -b      ] dy   r1
+   //         [-A'    c -I   ] dx   r2
+   //         [b' -c'     -1 ] dt = r3
+   //         [    mH   I    ] ds   r4
+   //         [       h   1  ] dk   r6
+   // with h = t/k r6 = r5/kappa
+
+   double h  = kappa/tau;
+   //Scale by 1/kappa
+   double r6 = r5/kappa; 
+
+    //Forms 
+    //        [    A  -b      ] dy     r1
+    //        [A' -mH -c      ] dx     r7
+    //        [b' -c'  h      ] dt =   r8
+    //        [   mH     I    ] ds     r4
+    //        [        h   1  ] dk     r6
+    // with r7 = -r2-r4; r8 = r3+r6;
+    
+    
+    //void cblas_daxpy(const int N, const double alpha, const double *X, const int incX, double *Y, const int incY);
+    //Add r2 and r4 in r2 
+    cblas_daxpy(r2.n,1,r2.v,1,r4.v,1);
+    cblas_dscal(r2.n,-1,r2.v,1);  //#TODO: free r2
+    //r7 = -(r2+r5);
+    vec r7 = r2;
+    //r8 = r3+r6;
+    double r8 = r3+r6; 
+    //  
+    //        [    A  -b     ] dy     r1
+    //        [A' -mH -c     ] dx     r7
+    //        [       h_2    ] dt =   r9
+    //        [   mH     I   ] ds     r4
+    //        [       h    1 ] dk     r6
+    //  
+    //[b' -c'] [     A]^{-1}[-b]     =  h_1b
+    //         [A' -mH]     [-c] 
+
+    //[b' -c'] [     A]^{-1}[r1]     =  r_7b
+    //         [A' -mH]     [r7] 
+
+    //We solve 
+    // tm_1 =  [     A]^{-1}[b ]    
+    //         [A' -mH]     [-c] 
+    // and keep it to calculate h_1b and r_7b more efficiently
+ 
+    //Call the solver 
+    
+    //Build the rhs
+    double* rhs  = calloc(A.n+A.m,sizeof(double));
     int i = 0;
-    for(i=0;i<n;i++)
-        x[i] = b[i];
+    for(i=0;i<A.m;i++)
+        rhs[i] = b.v[i];
+    for(i=0;i<A.n;i++)
+        rhs[i+A.m] = -c.v[i];
+
+    //Allocate space for the coo matrix
+    int* Ki;
+    int* Kp;
+    double* Kv;
+    //Calculate the final number of non zeros
+    int nnzK = A.m + 2*A.nnz + H.nnz;
+    //Pointer for the factorization
+    void* Numeric;
+    //Pointer to the solution
+    double* tm_1;
+   
+    int res;
+    //From the kkt system
+    res = form_kkt_system(mu, H.I, H.J, H.V, H.nnz, A.I, A.J, A.V, A.nnz, A.m, A.n, delta, gamma, &Ki, &Kp, &Kv);
+    //Factor 
+    res = factor_kkt_system(&Numeric, Ki, Kp, Kv, nnzK);
+    //Solve
+    res = solve_factored_system(Numeric, Ki, Kp, Kv, rhs, tm_1);
+
+    //Now calculate 
+    // h_1b   = tm_1'*[-b;-c];
+    double h_1b =  cblas_ddot(A.m,tm_1    ,1  ,b.v,1); 
+    h_1b        += cblas_ddot(A.n,tm_1+A.m,1  ,c.v,1);
+    h_1b        = -h_1b;
+    
+    // r_7b   = tm_1'*[r1;r7];
+    double r_7b =  cblas_ddot(A.m,tm_1,1,r1.v,1); 
+    r_7b        += cblas_ddot(A.n,tm_1+A.m,1,r7.v,1);
+ 
+    // r9  = r8 - r_7b;
+    // h_2 = h-h_1b; 
+    double r9   = r8-r_7b;
+    double h_2  = h-h_1b;
+   
+    // %We now start the back substitution
+    // dt  = r9/h_2;
+
+    *dt  = r9/h_2;
+   
+    // %reuse tm_1
+    // tm_1 = slv_aug([r1;r7]-dt*[-b;-c]);
+    
+    //Construct the rhs
+    //put [r1;r7] into rhs
+    cblas_dcopy(A.m,r1.v,1,rhs,1);
+    cblas_dcopy(A.n,r7.v,1,rhs+A.m,1);
+
+    //put r1+dt*b into rhs, and then r7+dt*c
+    cblas_daxpy(A.m,*dt,b.v,1,rhs,1);
+    cblas_daxpy(A.n,*dt,c.v,1,rhs+A.m,1);
+
+    //We dont need rhs anymore
+    free(rhs);
+
+    //Call the solver
+    res = solve_factored_system(Numeric,Ki,Kp,Kv,rhs,tm_1);
+    
+    // %Extract dy dx from dt
+    // dy   = tm_1(1:m);
+    // dx   = tm_1(m+1:m+n);
+
+    cblas_dcopy(A.m,tm_1,1,dy.v,1);
+    cblas_dcopy(A.n,tm_1+A.m,1,dx.v,1);
+
+    //We need the csr form of H for the product
+    csi* Hi =calloc(H.nnz,sizeof(csi));
+    csi* Hp =calloc(H.n+1,sizeof(csi)); //XXX: With free variables this can be smaller
+    double* Hv =calloc(H.nnz,sizeof(double));  
+    res = umfpack_di_triplet_to_col(H.m,H.n,H.nnz,H.I,H.J,H.V,Hp,Hi,Hv,NULL);
+     
+    // %Now back substitute to get ds and dkappa
+    // ds   = r4-mu*H*dx;
+    // dk   = r6-h*dt;
+    
+    //Use tm_1(1:n) //XXX: With free variables this is no longer n
+    //Calculate -mu*H*dx
+    dspmv(H.m,H.n,-mu,Hp,Hi,Hv,tm_1,dx.v); 
+    //void dspmv(int m, int n, double alpha, int* pA, int * iA, double* vA, double* y, double* x)
+    cblas_daxpy(H.n,1,r4.v,1,tm_1,1);
+    //Now ds is in tm_1;
+    cblas_dcopy(H.m,tm_1,1,ds.v,1);
+    *dk     = r6-h*(*dt);
+    
+    //Free the csr form of H
+    free(Hi);
+    free(Hp);
+    free(Hv);
+    //Free the work vector
+    free(tm_1);
+
+    // %Check the residuals
+    // n_res_1 = norm(A*dx-dt*b-r1);
+    // n_res_2 = norm(-A'*dy + dt*c -ds -r2);
+    // n_res_3 = norm(b'*dy-c'*dx -dk-r3);
+    // n_res_5 = norm(mu*H*dx+ds-r5);
+    // n_res_4 = norm(kappa*dt+tau*dk-r4);
+
+  
+    return 0;
 }
+

@@ -24,8 +24,14 @@ while true
     [v,R]   = getresiduals(v,pars,R);    % new residuals
     R       = checkstopcrit(v,pars,R);   % check stopping crits
     
+    if R.stop
+        fprintf('Stop command issued\n');    
+    end
+    tic 
     [v,R]   = centering(v,K,pars,R);     % centering (correction)
-        
+    center_time = toc;
+    fprintf('Centering time %i\n',center_time);
+
     v.s     = -pars.A'*v.y + ...         % pd-lifting
         pars.c*v.tau - v.rD0;               
     

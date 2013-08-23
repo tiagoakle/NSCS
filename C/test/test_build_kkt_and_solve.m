@@ -4,7 +4,7 @@
 %add the path to the matlab function that makes the call
 addpath '../src'
 
-load 'minentropy_system'
+load './test_data/minentropy_system.mat'
 [m,n] = size(A);
 %%Select the size of the problem to generate
 %m = 10;
@@ -16,9 +16,6 @@ load 'minentropy_system'
 %%Generate a lower bidiagonal matrix L and form H = LL'
 %L = diag(sparse(rand(n,1)))+diag(sparse(rand(n-1,1)),-1);
 %H = L*L';
-
-
-
 
 %Choose the regularization paramters and centrality value
 mu = 0.5;
