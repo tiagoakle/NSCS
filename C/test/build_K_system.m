@@ -10,6 +10,8 @@
 %Saves rhs in minentropy_rhs.csv
 %Saves b in minentropy_b.csv
 %Saves c in minentropy_c.csv
+%Saves r1,r2,r5 in minentropy_r1,...,minentropy_r5
+%Saves [mu,tau,kappa,r3,r4] in minentropy_doubles;
 
 load './test_data/minentropy_system.mat'
 [m,n] = size(A);
@@ -29,11 +31,18 @@ rhs= [b;-c];
 %Solve the system
 sol = K\rhs;
 
-%Save the systems
+doubles =[mu,tau,kappa,r3,r4]'; 
+%Save the matrices and vectors
 write_vector_to_csv('./test_data/minentropy_sol.csv',sol);
 write_vector_to_csv('./test_data/minentropy_rhs.csv',rhs);
 write_vector_to_csv('./test_data/minentropy_b.csv',b);
 write_vector_to_csv('./test_data/minentropy_c.csv',c);
+
+write_vector_to_csv('./test_data/minentropy_r1.csv',r1);
+write_vector_to_csv('./test_data/minentropy_r2.csv',r2);
+write_vector_to_csv('./test_data/minentropy_r5.csv',r5);
+write_vector_to_csv('./test_data/minentropy_doubles.csv',doubles)
+
 write_matrix_to_csv('./test_data/matlab_built_K.csv',K);
 write_matrix_to_csv('./test_data/minentropy_A.csv',A);
 write_matrix_to_csv('./test_data/minentropy_H.csv',H);

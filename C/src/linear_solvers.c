@@ -77,7 +77,7 @@ int solve_linear_system(double* x, int* I, int* J, double* V, int nnz, double *b
 }
 
 //Forms the KKT system in the allocated working vectors I,J,V 
-int form_kkt_system_triplets( double mu,\
+void form_kkt_system_triplets( double mu,\
                               int* hI,\
                               int* hJ,\
                               double* hV,\
@@ -99,7 +99,7 @@ int form_kkt_system_triplets( double mu,\
     nnz     = 0; //Use nnz as a counter of the copied values 
     int i   = 0;
 
-    //Allocate delta I
+    //Set delta I
     for(i=0;i<m;i++)
     {
         I[nnz] = i;
@@ -108,7 +108,7 @@ int form_kkt_system_triplets( double mu,\
         nnz++;
     }
    
-    //Allocate the A'
+    //Copy  A'
     for(i=0;i<nnzA;i++)
     {
         I[nnz] = aJ[i]+m;
@@ -117,7 +117,7 @@ int form_kkt_system_triplets( double mu,\
         nnz++;
     }
     
-    //Allocate the A
+    //Copy A
     for(i=0;i<nnzA;i++)
     {
         I[nnz] = aI[i];
@@ -126,7 +126,7 @@ int form_kkt_system_triplets( double mu,\
         nnz++;
     }
     
-    //Allocate the -muH 
+    //Copy -muH-gI
     //Since H is spd there are non zeros in the diagonal allready
     for(i=0;i<nnzH;i++)
     {
@@ -136,11 +136,10 @@ int form_kkt_system_triplets( double mu,\
         nnz++;
     }
 
-    return 0;
-
 }
 
 //This function forms the matrix to factorize and stores it in cco form in Ai, Aj, Av
+//The vectors Ai,Aj,Av are allocated inside
 int form_kkt_system( double mu,\
                      int* hI,\
                      int* hJ,\
@@ -167,18 +166,21 @@ int form_kkt_system( double mu,\
     int* J = calloc(nnz,sizeof(int));
     double* V = calloc(nnz,sizeof(double));
     
-    int status = form_kkt_system_triplets(mu, hI, hJ, hV, nnzH, aI, aJ, aV, nnzA, m, n, delta, gamma, I, J, V);
-     
+     form_kkt_system_triplets(mu, hI, hJ, hV, nnzH, aI, aJ, aV, nnzA, m, n, delta, gamma, I, J, V);
+         
      //Convert to compressed column form
      //Allocate the space 
-     (*Ai)=calloc(nnz,sizeof(int));
-     (*Ap)=calloc(n+m+1,sizeof(int));
+     (*Ai)=calloc(nnz,sizeof(csi));
+     (*Ap)=calloc(n+m+1,sizeof(csi));
      (*Av)=calloc(nnz,sizeof(double)); 
      int* Map=NULL;
 
     //Execute the call to the compression routine
-     status  =  umfpack_di_triplet_to_col(n+m,n+m,nnz,I,J,V,*Ap,*Ai,*Av,Map);
-
+     int status  =  umfpack_di_triplet_to_col(n+m,n+m,nnz,I,J,V,*Ap,*Ai,*Av,Map);
+     if(status!=0)
+     {
+        fprintf(stderr,"Pack COO to CSR failed %i\n",status);
+     }
      //Clear the temporary triplet form 
      free(I);
      free(J);
@@ -190,7 +192,7 @@ int form_kkt_system( double mu,\
 
 //This function receives the matrix to factor in cco form and retunrs
 //the numeric factorization in Numeric
-int factor_kkt_system(void** Numeric, int* Ai, int* Ap, double* Av, int n)
+int factor_kkt_system(void** Numeric, int* Ai, int* Ap, double* Av, int n, int m)
 {
  
      int status;
@@ -199,32 +201,34 @@ int factor_kkt_system(void** Numeric, int* Ai, int* Ap, double* Av, int n)
      //Define some stuff 
      void *Symbolic;
      //Do the symbolic analysis
-     status = umfpack_di_symbolic (n, n, Ap, Ai, Av, &Symbolic, null, null) ;
+     status = umfpack_di_symbolic (n+m, n+m, Ap, Ai, Av, &Symbolic, null, null) ;
      
      if(status != 0)
      {
+        fprintf(stderr,"umfpack symbolic failed %i\n",status);
         if(Symbolic != NULL)
             umfpack_di_free_symbolic (&Symbolic) ;
 
          free(Ai);
          free(Ap);
          free(Av);
-        return status - 100;
+        return status;
      }
      else //symbolic succeeded
      { 
          //Do the numeric analysis
-         status = umfpack_di_numeric (Ap, Ai, Av, Symbolic, Numeric, NULL,NULL) ;
-         
+         status = umfpack_di_numeric (Ap, Ai, Av, Symbolic, Numeric, NULL,NULL);
          if(status != 0) //If there was an error free the stuff
          { 
+
+            fprintf(stderr,"umfpack numeric failed %i\n",status); 
              umfpack_di_free_symbolic (&Symbolic) ;
              if(Numeric != NULL)
                 umfpack_di_free_numeric (Numeric) ;
              free(Ai);
              free(Ap);
              free(Av);
-             return status - 200;
+             return status;
          }
          else //Numeric succeeded 
          { 
@@ -239,9 +243,9 @@ int factor_kkt_system(void** Numeric, int* Ai, int* Ap, double* Av, int n)
 int solve_factored_system(void* Numeric, int* Ai, int* Ap, double* Av, double* rhs, double* x)
 {
     int status; 
-    // Now solve the system
     status = umfpack_di_solve (UMFPACK_A, Ap, Ai, Av, x, rhs, Numeric, NULL, NULL) ; 
-   
+    if(status != 0)
+        fprintf(stderr,"umfpack solve failed %i\n",status);
     return status; 
 }
 
@@ -351,11 +355,19 @@ int solve_kkt_system(double mu,\
     
     
     //void cblas_daxpy(const int N, const double alpha, const double *X, const int incX, double *Y, const int incY);
-    //Add r2 and r4 in r2 
-    cblas_daxpy(r2.n,1,r2.v,1,r4.v,1);
-    cblas_dscal(r2.n,-1,r2.v,1);  //#TODO: free r2
-    //r7 = -(r2+r5);
-    vec r7 = r2;
+    
+    //Allocate a working vector
+    vec r7;
+    r7.n = r2.n;
+    r7.v = calloc(r7.n,sizeof(double));
+
+
+    cblas_dcopy(r2.n,r2.v,1,r7.v,1);
+    //Add r2 and r4 in r7
+    cblas_daxpy(r2.n,1.,r4.v,1,r7.v,1);
+    cblas_dscal(r7.n,-1,r7.v,1);  //#TODO: free r2
+    //r7 = -(r2+r4);
+    
     //r8 = r3+r6;
     double r8 = r3+r6; 
     //  
@@ -387,23 +399,41 @@ int solve_kkt_system(double mu,\
         rhs[i+A.m] = -c.v[i];
 
     //Allocate space for the coo matrix
-    int* Ki;
-    int* Kp;
-    double* Kv;
+    csi* Ki=NULL;
+    csi* Kp=NULL;
+    double* Kv=NULL;
     //Calculate the final number of non zeros
-    int nnzK = A.m + 2*A.nnz + H.nnz;
+    csi nnzK = A.m + 2*A.nnz + H.nnz;
     //Pointer for the factorization
     void* Numeric;
     //Pointer to the solution
-    double* tm_1;
+    double* tm_1 = calloc(A.n+A.m,sizeof(double));
    
     int res;
     //From the kkt system
     res = form_kkt_system(mu, H.I, H.J, H.V, H.nnz, A.I, A.J, A.V, A.nnz, A.m, A.n, delta, gamma, &Ki, &Kp, &Kv);
+    if(res!=0)
+    {
+        fprintf(stderr,"Error forming kkt system, %i \n",res);
+        return INTERNAL_ERROR;
+    }
+
     //Factor 
-    res = factor_kkt_system(&Numeric, Ki, Kp, Kv, nnzK);
+    res = factor_kkt_system(&Numeric, Ki, Kp, Kv, A.n, A.m);
+    if(res!=0)
+    {
+        fprintf(stderr,"Error factoring kkt system %i, nnzk %i\n",res,Kp[nnzK]);
+        return INTERNAL_ERROR;
+    }
+   
     //Solve
     res = solve_factored_system(Numeric, Ki, Kp, Kv, rhs, tm_1);
+    if(res!=0)
+    {
+        fprintf(stderr,"Error solving kkt system %i \n",res);
+        return INTERNAL_ERROR;
+    }
+
 
     //Now calculate 
     // h_1b   = tm_1'*[-b;-c];
@@ -414,6 +444,8 @@ int solve_kkt_system(double mu,\
     // r_7b   = tm_1'*[r1;r7];
     double r_7b =  cblas_ddot(A.m,tm_1,1,r1.v,1); 
     r_7b        += cblas_ddot(A.n,tm_1+A.m,1,r7.v,1);
+
+    free(r7.v);
  
     // r9  = r8 - r_7b;
     // h_2 = h-h_1b; 
@@ -437,12 +469,23 @@ int solve_kkt_system(double mu,\
     cblas_daxpy(A.m,*dt,b.v,1,rhs,1);
     cblas_daxpy(A.n,*dt,c.v,1,rhs+A.m,1);
 
+    //Call the solver
+    res = solve_factored_system(Numeric,Ki,Kp,Kv,rhs,tm_1);
+    if(res!=0)
+    {
+        fprintf(stderr,"Error solving kkt system %i \n",res);
+        return INTERNAL_ERROR;
+    }
+
     //We dont need rhs anymore
     free(rhs);
 
-    //Call the solver
-    res = solve_factored_system(Numeric,Ki,Kp,Kv,rhs,tm_1);
-    
+    //We can fee Ki,Kp,Kv  and Numeric
+    free(Ki);
+    free(Kp);
+    free(Kv); 
+    umfpack_di_free_numeric(&Numeric);
+
     // %Extract dy dx from dt
     // dy   = tm_1(1:m);
     // dx   = tm_1(m+1:m+n);
@@ -454,17 +497,27 @@ int solve_kkt_system(double mu,\
     csi* Hi =calloc(H.nnz,sizeof(csi));
     csi* Hp =calloc(H.n+1,sizeof(csi)); //XXX: With free variables this can be smaller
     double* Hv =calloc(H.nnz,sizeof(double));  
-    res = umfpack_di_triplet_to_col(H.m,H.n,H.nnz,H.I,H.J,H.V,Hp,Hi,Hv,NULL);
-     
+    res = umfpack_di_triplet_to_col(H.m,H.n,H.nnz,H.I,H.J,H.V,Hp,Hi,Hv,NULL);     
+    if(res!=0)
+    {
+        fprintf(stderr,"Error converting triplet form H to CRS %i \n",res);
+        return INTERNAL_ERROR;
+    }
+
+
     // %Now back substitute to get ds and dkappa
     // ds   = r4-mu*H*dx;
     // dk   = r6-h*dt;
     
     //Use tm_1(1:n) //XXX: With free variables this is no longer n
     //Calculate -mu*H*dx
+    //clear tm_1
+    for(i=0;i<H.m;i++)
+        tm_1[i] = 0;
+
     dspmv(H.m,H.n,-mu,Hp,Hi,Hv,tm_1,dx.v); 
     //void dspmv(int m, int n, double alpha, int* pA, int * iA, double* vA, double* y, double* x)
-    cblas_daxpy(H.n,1,r4.v,1,tm_1,1);
+    cblas_daxpy(H.n,1.,r4.v,1,tm_1,1);
     //Now ds is in tm_1;
     cblas_dcopy(H.m,tm_1,1,ds.v,1);
     *dk     = r6-h*(*dt);
@@ -479,9 +532,9 @@ int solve_kkt_system(double mu,\
     // %Check the residuals
     // n_res_1 = norm(A*dx-dt*b-r1);
     // n_res_2 = norm(-A'*dy + dt*c -ds -r2);
-    // n_res_3 = norm(b'*dy-c'*dx -dk-r3);
-    // n_res_5 = norm(mu*H*dx+ds-r5);
-    // n_res_4 = norm(kappa*dt+tau*dk-r4);
+    // n_res_3 = norm(b'*dy-c'*dx -dk -r3); 
+    // n_res_4 = norm(mu*H*dx+ds-r4);
+    // n_res_5 = norm(kappa*dt+tau*dk-r5);
 
   
     return 0;

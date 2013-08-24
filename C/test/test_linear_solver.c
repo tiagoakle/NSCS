@@ -1,10 +1,12 @@
 #include <stdio.h>
-#include "linear_solvers.h"
-#include "test_util.h"
 #include <stdlib.h>
 #include <math.h>
 #include "test_linear_solver.h"
+#include "linear_solvers.h"
 #include "nscs_sp.h"
+#include "OpenBLAS/cblas.h"
+#include "test_util.h"
+#include "smatvec.h"
 
 START_TEST (test_solve_linear_system)
 {
@@ -93,8 +95,9 @@ END_TEST
 //    write_matrix_to_csv("./test/H2.csv",I,J,V,m,n,nnz); 
 //}
 
-START_TEST (form_kkt_system_in_triplet_format)
+START_TEST (test_form_kkt_system)
 {
+    printf("Test form KKT system ------------- \n");
      //read H.csv
     int nnzH = 0;
     int n;
@@ -121,20 +124,22 @@ START_TEST (form_kkt_system_in_triplet_format)
     
     int nnzK = m + 2*nnzA+nnzH;
 
-     int* I = calloc(nnzK,sizeof(int));
-     int* J = calloc(nnzK,sizeof(int));
-     double* V = calloc(nnzK,sizeof(double));
+     csi* Ai = NULL;
+     csi* Ap = NULL;
+     double* Av = NULL;
+
      int res; 
-     res =  form_kkt_system_triplets(mu, hI, hJ,hV,nnzH,aI,aJ,aV,
+     res =  form_kkt_system(mu, hI, hJ,hV,nnzH,aI,aJ,aV,
                                      nnzA,\
                                      m,\
                                      n,\
                                      delta,\
                                      gamma,\
-                                     I,\
-                                     J,\
-                                     V);
+                                     &Ai,\
+                                     &Ap,\
+                                     &Av);
 
+     printf("Form KKT SYTEM %i\n",res);
      
      int* rI = calloc(nnzK,sizeof(int));
      int* rJ = calloc(nnzK,sizeof(int));
@@ -142,23 +147,36 @@ START_TEST (form_kkt_system_in_triplet_format)
      read_csv_triplets("./test/test_data/matlab_built_K.csv",rI,rJ,rV);   
      printf("Loaded matrix K of size %i,%i with nnz: %i \n",m+n,n+n,nnzK);
 
-     //Now check that the constructed and the saved K match
-    int i;
-    double errI =0;
-    double errJ =0;
-    double errV =0;
-    double t;
-    for(i=0;i<nnzK;i++)
-    { 
-       t = I[i] - rI[i];
-       errI += t*t; 
-       t = J[i] - rJ[i];
-       errI += t*t;
-       t = V[i] - rV[i];
-       errV += t*t;
-    }
-    printf("Built KKT system vs stored\n");
-    printf("Squared error in I %lf, in J %lf, in V %lf\n",errI,errJ,errV); 
+     csi* rAi = calloc(nnzK,sizeof(csi));
+     csi* rAp = calloc(n+m+1,sizeof(csi));
+     double* rAv = calloc(nnzK,sizeof(double));
+     //Build the csr form of the matlab system
+     res  =  umfpack_di_triplet_to_col(n+m,n+m,nnzK,rI,rJ,rV,rAp,rAi,rAv,NULL);
+     printf("Umfpack triplet to col %i \n",res);
+
+     //Compare both systems
+      double t1,t2;
+      double a1  = 0;
+      double a2  = 0;
+      double a3  = 0;
+    int i = 0; 
+     for(i=0;i<nnzK;i++)
+     {
+        t1 = rAi[i]-Ai[i];    
+        t2 = rAv[i]-Av[i];
+        a1 += t1*t1;
+        a2 += t2*t2;
+     }
+     for(i=0;i<n+m+1;i++)
+     {
+        t1 = rAp[i]-Ap[i];
+        a3 += t1*t1; 
+     }
+     printf("Differences %lf, %lf, %lf\n",a1,a2,a3);
+     fflush(stdout);
+     ck_assert(a1<1.e-16);
+     ck_assert(a2<1.e-16);  
+     ck_assert(a3<1.e-16);
 }
 END_TEST;
 
@@ -210,7 +228,7 @@ void test_load_csv_and_solve_system(void)
       if (ret != 0)
          sol[0] = -1000+ret;     
      
-     ret = factor_kkt_system(&Numeric, Ai, Ap, Av, n+m);
+     ret = factor_kkt_system(&Numeric, Ai, Ap, Av, n, m);
      printf("Factor KKT SYSTEM %i\n",ret);     
      fflush(stdout);
       if (ret != 0)
@@ -249,6 +267,9 @@ void test_load_csv_and_solve_system(void)
 //Test the solution to the full HSD system
 void test_full_hsd_soltuion(void)
 {
+
+
+    printf("---------Test of full solve-------\n");
     //read H.csv
     spmat H; 
     read_csv_size("./test/test_data/minentropy_H.csv",&H.m,&H.n,&H.nnz);
@@ -272,36 +293,56 @@ void test_full_hsd_soltuion(void)
     
     char* nameb="./test/test_data/minentropy_b.csv";
     b.n = read_size(nameb);
+    b.v = calloc(b.n,sizeof(double));
     read_vector(nameb,b.v); 
     printf("Loaded vector b of size %i \n",b.n);
 
     char* namec="./test/test_data/minentropy_c.csv";
     c.n = read_size(namec);
+    c.v = calloc(c.n,sizeof(double));
     read_vector(namec,c.v); 
     printf("Loaded vector c of size %i \n",c.n);
-    //This??
-    free(nameb);
-    free(namec);
-
-    //Allocate space for the residuals
+    
+    //Read the vector that contains [mu,tau,kappa,r3,r4]
+    char* name = "./test/test_data/minentropy_doubles.csv";
+    vec doubles;
+    doubles.n = 5;
+    doubles.v = calloc(5,sizeof(double));
+    read_vector(name,doubles.v);
+  
+    //Allocate space for the residuals and read
     vec *r1 = calloc_vec(A.m);
+    name = "./test/test_data/minentropy_r1.csv";
+    read_vector(name,r1->v);
+
     vec *r2 = calloc_vec(A.n);
-    double *r3;
+    name = "./test/test_data/minentropy_r2.csv";
+    read_vector(name,r2->v);
+    
+    //The vector called r5 in the matlab version 
+    //Corresponds to the vector r4 here
     vec *r4 = calloc_vec(H.n);
-    double *r5;
+    name = "./test/test_data/minentropy_r5.csv";
+    read_vector(name,r4->v);
    
     //Allocate space for the return values
     vec *dx = calloc_vec(A.n);
     vec *dy = calloc_vec(A.m);
     vec *ds = calloc_vec(H.n);
     double dt, dk;
+    
+    double mu  = doubles.v[0];
+    double tau = doubles.v[1];
+    double kappa = doubles.v[2];
+    double r3    = doubles.v[3];
+    double r5    = doubles.v[4];
 
-    double tau = 10;
-    double kappa = 10;
-    double mu = 1.;
     double delta = 1.e-10;
     double gamma = 1.e-10;
     int res;
+    
+    printf("Loaded residuals ready to call solver\n");
+
     res  = solve_kkt_system(mu,\
                      H,\
                      A,\
@@ -311,20 +352,87 @@ void test_full_hsd_soltuion(void)
                      kappa,\
                      delta,\
                      gamma,\
-                     r1,\
-                     r2,\
+                     *r1,\
+                     *r2,\
                      r3,\
-                     r4,\
+                     *r4,\
                      r5,\
                      *dy,\
                      *dx,\
                      &dt,\
                      *ds,\
                      &dk );
-
+    printf("Solver return\n");
+    // %Check the residuals
+    // n_res_1 = norm(A*dx-dt*b-r1);
+    // n_res_2 = norm(-A'*dy + dt*c -ds -r2);
+    // n_res_3 = norm(b'*dy-c'*dx -dk-r3);
+    // n_res_5 = norm(mu*H*dx+ds-r4);
+    // n_res_4 = norm(kappa*dt+tau*dk-r5);
+    
+    //Generate a CRS version of H 
+    csi* Hi =calloc(H.nnz,sizeof(csi));
+    csi* Hp =calloc(H.n+1,sizeof(csi)); //XXX: With free variables this can be smaller
+    double* Hv =calloc(H.nnz,sizeof(double));  
+    res = umfpack_di_triplet_to_col(H.m,H.n,H.nnz,H.I,H.J,H.V,Hp,Hi,Hv,NULL);     
+    printf("H to CRS %i\n",res); 
  
-}
+    //Generate a CRS version of A 
+    csi* Ai =calloc(A.nnz,sizeof(csi));
+    csi* Ap =calloc(A.n+1,sizeof(csi)); //XXX: With free variables this can be smaller
+    double* Av =calloc(A.nnz,sizeof(double));  
+    res = umfpack_di_triplet_to_col(A.m,A.n,A.nnz,A.I,A.J,A.V,Ap,Ai,Av,NULL);      
+    printf("A to CRS %i\n",res); 
 
+    //Calculate the first residual
+    double* res_1 = calloc(A.m,sizeof(double));
+   
+    //void dspmv(int m, int n, double alpha, int* pA, int * iA, double* vA, double* y, double* x)
+    dspmv(A.m,A.n,1.,Ap,Ai,Av,res_1,dx->v);
+    cblas_daxpy(A.m,-dt,b.v,1,res_1,1);
+    cblas_daxpy(A.m,-1,r1->v,1,res_1,1);
+    double n_res_1 = cblas_ddot(A.m,res_1,1,res_1,1); 
+    printf("Norm residual 1 %lf\n",n_res_1);
+    
+    //Calculate the second residual 
+    double* res_2 = calloc(A.n,sizeof(double));
+    dsTpmv(A.m,A.n,-1.,Ap,Ai,Av,res_2,dy->v);
+    cblas_daxpy(A.n,dt,c.v,1,res_2,1);
+    cblas_daxpy(A.n,-1.,ds->v,1,res_2,1);
+    cblas_daxpy(A.n,-1.,r2->v,1,res_2,1);
+    double n_res_2 = cblas_ddot(A.n,res_2,1,res_2,1);
+
+    //Debug stuff
+    write_vector_to_csv("./test/test_data/debug_dy_solution.csv",dy->v,dy->n);
+    write_vector_to_csv("./test/test_data/debug_Atdy_solution.csv",res_2,A.n); 
+    write_vector_to_csv("./test/test_data/debug_ds_solution.csv",ds->v,A.n);
+    write_vector_to_csv("./test/test_data/debug_dt_solution.csv",&dt,1);
+    write_vector_to_csv("./test/test_data/debug_dx_solution.csv",dx->v,dx->n);
+    write_vector_to_csv("./test/test_data/debug_dk_solution.csv",&dk,1);
+    write_vector_to_csv("./test/test_data/debug_r4_solution.csv",r4->v,r4->n);
+    write_vector_to_csv("./test/test_data/debug_r2_solution.csv",r2->v,r2->n);
+
+    printf("Norm residual 2 %lf \n",n_res_2);
+
+    //Calculate the 3rd residual
+    double n_res_3 ;
+    n_res_3 = cblas_ddot(A.m,b.v,1,dy->v,1) - cblas_ddot(A.n,c.v,1,dx->v,1) -dk -r3;
+    printf("Norm residual 3 %lf \n",n_res_3);
+
+
+    //Calculate the 4th residual
+    double* res_4 = calloc(A.n,sizeof(double));
+    dspmv(H.m,H.n,mu,Hp,Hi,Hv,res_4,dx->v);
+    cblas_daxpy(H.m,1.,ds->v,1,res_4,1);
+    cblas_daxpy(H.m,-1.,r4->v,1,res_4,1);
+    double n_res_4 = cblas_ddot(H.n,res_4,1,res_4,1);
+    printf("Norm residual 4 %lf\n",n_res_4);
+
+    //Calculate the 5th residual
+    double n_res_5 = kappa*dt+tau*dk-r5;
+    printf("Norm residual 5 %lf \n",n_res_5);
+    
+}
 
 Suite* linear_solver_suite(void)
 {
@@ -333,8 +441,9 @@ Suite* linear_solver_suite(void)
     tcase_set_timeout(tc,4);
     tcase_add_test(tc,test_solve_linear_system);
     tcase_add_test(tc,test_solve_random_system);
-    tcase_add_test(tc,form_kkt_system_in_triplet_format);
+    tcase_add_test(tc,test_form_kkt_system);
 //    tcase_add_test(tc,test_load_csv_and_solve_system);
+    tcase_add_test(tc,test_full_hsd_soltuion);
     suite_add_tcase(suite,tc);
     return suite;
 }

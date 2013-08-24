@@ -23,5 +23,5 @@
 //Other errors
 #define CENTER_ITERS_EXCEEDED -2
 #define OUT_OF_MEMORY -99
-
+#define INTERNAL_ERROR -98
 #endif
