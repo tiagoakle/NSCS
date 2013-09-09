@@ -2,17 +2,17 @@ CC=llvm-gcc-4.2
 CFLAGS=-fPIC
 
 TESTDIR=./test
-TESTSOURCES=test_util.c test_linear_solver.c test_smatvec.c main_tests.c
+TESTSOURCES=test_util.c test_linear_solver.c test_smatvec.c main_tests.c test_barriers.c 
 TESTOBJECTS=$(TESTSOURCES:.c=.o)
 TESTOBJECTDIR=./build/test
 
 SRCDIR=./src
-SOURCES=linear_solvers.c nscs_sp.c smatvec.c 
+SOURCES=linear_solvers.c nscs_sp.c smatvec.c barriers.c ../test/test_util.c 
 OBJECTS=$(SOURCES:.c=.o)
 OBJECTDIR=./build
 
 NSCSDIR=./src
-NSCSSOURCES=nscs.c nscs_sp.c
+NSCSSOURCES=nscs.c nscs_sp.c barriers.c linear_solvers.c smatvec.c ../test/test_util.c
 NSCSOBJECTS= $(NSCSSOURCES:.c=.o)
 
 STATICLOPENBLAS=/Users/tiago/OpenBLAS/libopenblas.a
@@ -46,7 +46,7 @@ LIBOUTDIR=./Lib
 DYLIBFLAGS=-dynamiclib -undefined error 
 
 
-all: $(DYLIB)
+all: $(DYLIB) nscs
 
 $(OBJECTDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -g $(IDIRS) -c $< -o $@

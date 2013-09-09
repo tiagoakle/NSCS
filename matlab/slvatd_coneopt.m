@@ -12,6 +12,9 @@ r5 = -v.s;
 %[d_2,CF] = slvhomkkt(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,...
 %    -v.rP,-v.rD,-v.rG,r4,r5,pars);
 
+%[d_2,CF] = solve_linear_system_mixed(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,...
+%    -v.rP,-v.rD,-v.rG,r4,r5,pars);
+
 [d,CF] = solve_linear_system(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,...
     -v.rP,-v.rD,-v.rG,r4,r5,pars);
 
@@ -37,7 +40,6 @@ v.dtauaff   = v.dtau;
 v.dkappaaff = v.dkappa;
 
 
-
 % TESTING
 if pars.addcent
 beta1 = 0.9;
@@ -51,17 +53,18 @@ r3  = -v.rG          + gam*v.rG;
 r4  = -v.tau*v.kappa + gam*v.mu;
 r5  = -v.s           - gam*v.mu*v.F{2};
 
-[d,CF] = slvhomkkt(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,...
-    r1,r2,r3,r4,r5,pars);
-    
+%[d,CF] = slvhomkkt(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,...
+%    r1,r2,r3,r4,r5,pars);
+[d,CF] = solve_linear_system(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,...
+     r1,r2,r3,r4,r5,pars);
+
+   
 v.dx     = d{1};
 v.dtau   = d{2};
 v.dy     = d{3};
 v.ds     = d{4};
 v.dkappa = d{5};
 end
-
-
 
 
 v.CF = CF;

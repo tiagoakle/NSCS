@@ -273,6 +273,123 @@ int free_factorization(void* Numeric, int* Ai, int* Ap, double* Av)
 //The following functions should substitute the solve KKT system call
 //function [d,CF] = solve_linear_system(H,mu,A,b,c,tau,kappa,r1,r2,r3,r4,r5,pars)
 
+//Wraps solve_kkt_system so no structures are used and it is easier to call from 
+//MATLAB
+
+int solve_kkt_system_no_structs(int m, int n,
+                                double mu,\
+                                int* Hi,\
+                                int* Hj,\
+                                double* Hv,\
+                                int Hnnz,\
+                                int* Ai,\
+                                int* Aj,\
+                                double* Av,\
+                                int Annz,\
+                                double* b,\
+                                double* c,\
+                                double tau,\
+                                double kappa,\
+                                double delta,\
+                                double gamma,\
+                                double* r1,\
+                                double* r2,\
+                                double r3,\
+                                double* r4,\
+                                double r5,\
+                                double* dy,\
+                                double* dx,\
+                                double* dt,\
+                                double* ds,\
+                                double* dk )
+{
+   //Build the structures
+   spmat H;
+   H.m   = n;
+   H.n   = n;
+   H.nnz = Hnnz;
+   H.I   = Hi;
+   H.J   = Hj;
+   H.V   = Hv;
+
+   spmat A;
+   A.m   = m;
+   A.n   = n;
+   A.nnz = Annz;
+   A.I   = Ai;
+   A.J   = Aj;
+   A.V   = Av;
+
+   vec   vb;
+   vb.n   = m;
+   vb.v   = b;
+
+   vec   vc;
+   vc.n   = n;
+   vc.v   = c;
+
+   vec   vr1;
+   vr1.n  = m;
+   vr1.v  = r1;
+
+   vec   vr2;
+   vr2.n  = n;
+   vr2.v  = r2;
+
+   vec   vr4;
+   vr4.n  = n;
+   vr4.v  = r4;
+   
+   //Now build the vectors where the result will be stored
+   //we assume that dy,dx,ds are already allocated
+   vec   vdy;
+   vdy.n  = m;
+   vdy.v  = dy;
+
+   vec   vdx;
+   vdx.n  = n;
+   vdx.v  = dx;
+
+   vec    vds;
+   vds.n  = n;
+   vds.v  = ds;
+
+double scalars[] = {m,n,tau,kappa};
+//Debug stuff
+write_vector_to_csv("b_call.csv", vb.v, vb.n);
+write_vector_to_csv("c_call.csv", vc.v, vc.n);
+write_vector_to_csv("r1_call.csv", vr1.v, vr1.n);
+write_vector_to_csv("r2_call.csv", vr2.v, vr2.n);
+write_vector_to_csv("r4_call.csv", vr4.v, vr4.n);
+write_vector_to_csv("doubles_call.csv",scalars,4);
+
+//Now execute the call
+int ret = solve_kkt_system(mu,\
+                     H,\
+                     A,\
+                     vb,\
+                     vc,\
+                     tau,\
+                     kappa,\
+                     delta,\
+                     gamma,\
+                     vr1,\
+                     vr2,\
+                     r3,\
+                     vr4,\
+                     r5,\
+                     vdy,\
+                     vdx,\
+                     dt,\
+                     vds,\
+                     dk );
+
+//Debug stuff
+write_vector_to_csv("dx_call.csv", vdx.v, vdx.n);
+
+return ret;
+
+}
 
 //Forms and solves the KKT system 
 /**
@@ -297,7 +414,7 @@ int free_factorization(void* Numeric, int* Ai, int* Ap, double* Av)
  * @param r3
  * @param r4
  * @param r5
- * @param dy pointer to a vec structure
+ * @param dy pointer to a vec structure with pre-allocated space for m variables
  * @param dx 
  * @param dt 
  * @param ds 
@@ -311,7 +428,7 @@ int solve_kkt_system(double mu,\
                      double tau,\
                      double kappa,\
                      double delta,\
-                     double gamma,\  
+                     double gamma,\
                      vec r1,\
                      vec r2,\
                      double r3,\
@@ -339,11 +456,11 @@ int solve_kkt_system(double mu,\
    //         [b' -c'     -1 ] dt = r3
    //         [    mH   I    ] ds   r4
    //         [       h   1  ] dk   r6
-   // with h = t/k r6 = r5/kappa
+   // with h = k/t r6 = r5/tau
 
    double h  = kappa/tau;
    //Scale by 1/kappa
-   double r6 = r5/kappa; 
+   double r6 = r5/tau; 
 
     //Forms 
     //        [    A  -b      ] dy     r1
@@ -540,3 +657,9 @@ int solve_kkt_system(double mu,\
     return 0;
 }
 
+//Copies In[0] to In[n-1] to Out[1] to Out[n-1]
+//This is usefull to debug MATLAB's bugs in callib
+void dummy_copy(double* Out, double* In, int n)
+{
+    cblas_dcopy(n,In,1,Out,1);
+}

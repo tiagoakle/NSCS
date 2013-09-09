@@ -267,7 +267,11 @@ void test_load_csv_and_solve_system(void)
 //Test the solution to the full HSD system
 void test_full_hsd_soltuion(void)
 {
-
+    //Reads the system stored in the files
+    //minentropy_H,minentropy_A,minentropy_b,..., etc 
+    //builds the HSD system and solves it 
+    //saves the solution in test_data/debug_Atdy_,...,test_data/debug_dx_solution... etc.
+    //Computes the residual and calculates the residual norm for each equation.
 
     printf("---------Test of full solve-------\n");
     //read H.csv
@@ -363,6 +367,7 @@ void test_full_hsd_soltuion(void)
                      *ds,\
                      &dk );
     printf("Solver return\n");
+
     // %Check the residuals
     // n_res_1 = norm(A*dx-dt*b-r1);
     // n_res_2 = norm(-A'*dy + dt*c -ds -r2);
@@ -402,6 +407,26 @@ void test_full_hsd_soltuion(void)
     cblas_daxpy(A.n,-1.,r2->v,1,res_2,1);
     double n_res_2 = cblas_ddot(A.n,res_2,1,res_2,1);
 
+    printf("Norm residual 2 %lf \n",n_res_2);
+
+    //Calculate the 3rd residual
+    double n_res_3 ;
+    n_res_3 = cblas_ddot(A.m,b.v,1,dy->v,1) - cblas_ddot(A.n,c.v,1,dx->v,1) -dk -r3;
+    printf("Norm residual 3 %lf \n",n_res_3);
+
+
+    //Calculate the 4th residual
+    double* res_4 = calloc(A.n,sizeof(double));
+    dspmv(H.m,H.n,mu,Hp,Hi,Hv,res_4,dx->v);
+    cblas_daxpy(H.m,1.,ds->v,1,res_4,1);
+    cblas_daxpy(H.m,-1.,r4->v,1,res_4,1);
+    double n_res_4 = cblas_ddot(H.n,res_4,1,res_4,1);
+    printf("Norm residual 4 %lf\n",n_res_4);
+
+    //Calculate the 5th residual
+    double n_res_5 = kappa*dt+tau*dk-r5;
+    printf("Norm residual 5 %lf \n",n_res_5);
+
     //Debug stuff
     write_vector_to_csv("./test/test_data/debug_dy_solution.csv",dy->v,dy->n);
     write_vector_to_csv("./test/test_data/debug_Atdy_solution.csv",res_2,A.n); 
@@ -411,6 +436,163 @@ void test_full_hsd_soltuion(void)
     write_vector_to_csv("./test/test_data/debug_dk_solution.csv",&dk,1);
     write_vector_to_csv("./test/test_data/debug_r4_solution.csv",r4->v,r4->n);
     write_vector_to_csv("./test/test_data/debug_r2_solution.csv",r2->v,r2->n);
+    
+}
+
+//Test the solution to the full HSD system using the call 
+//that requires no structs
+void test_full_hsd_soltuion_no_structs(void)
+{
+    //Reads the system stored in the files
+    //minentropy_H,minentropy_A,minentropy_b,..., etc 
+    //builds the HSD system and solves it 
+    //Computes the residual and calculates the residual norm for each equation.
+
+    printf("---------Test of full solve no structs------\n");
+    //read H.csv
+    spmat H; 
+    read_csv_size("./test/test_data/minentropy_H.csv",&H.m,&H.n,&H.nnz);
+    H.I= calloc(H.nnz,sizeof(int));
+    H.J= calloc(H.nnz,sizeof(int));
+    H.V = calloc(H.nnz,sizeof(double));
+    read_csv_triplets("./test/test_data/minentropy_H.csv",H.I,H.J,H.V);   
+    printf("Loaded matrix H of size %i,%i with nnz: %i \n",H.m,H.n,H.nnz);
+
+    //read A.csv
+    spmat A;
+    read_csv_size("./test/test_data/minentropy_A.csv",&A.m,&A.n,&A.nnz);
+    A.I = calloc(A.nnz,sizeof(int));
+    A.J = calloc(A.nnz,sizeof(int));
+    A.V = calloc(A.nnz,sizeof(double));
+    read_csv_triplets("./test/test_data/minentropy_A.csv",A.I,A.J,A.V);   
+    printf("Loaded matrix A of size %i,%i with nnz: %i \n",A.m,A.n,A.nnz);
+
+    vec b;
+    vec c;
+    
+    char* nameb="./test/test_data/minentropy_b.csv";
+    b.n = read_size(nameb);
+    b.v = calloc(b.n,sizeof(double));
+    read_vector(nameb,b.v); 
+    printf("Loaded vector b of size %i \n",b.n);
+
+    char* namec="./test/test_data/minentropy_c.csv";
+    c.n = read_size(namec);
+    c.v = calloc(c.n,sizeof(double));
+    read_vector(namec,c.v); 
+    printf("Loaded vector c of size %i \n",c.n);
+    
+    //Read the vector that contains [mu,tau,kappa,r3,r4]
+    char* name = "./test/test_data/minentropy_doubles.csv";
+    vec doubles;
+    doubles.n = 5;
+    doubles.v = calloc(5,sizeof(double));
+    read_vector(name,doubles.v);
+  
+    //Allocate space for the residuals and read
+    vec *r1 = calloc_vec(A.m);
+    name = "./test/test_data/minentropy_r1.csv";
+    read_vector(name,r1->v);
+
+    vec *r2 = calloc_vec(A.n);
+    name = "./test/test_data/minentropy_r2.csv";
+    read_vector(name,r2->v);
+    
+    //The vector called r5 in the matlab version 
+    //Corresponds to the vector r4 here
+    vec *r4 = calloc_vec(H.n);
+    name = "./test/test_data/minentropy_r5.csv";
+    read_vector(name,r4->v);
+   
+    //Allocate space for the return values
+    vec *dx = calloc_vec(A.n);
+    vec *dy = calloc_vec(A.m);
+    vec *ds = calloc_vec(H.n);
+    double dt, dk;
+    
+    double mu  = doubles.v[0];
+    double tau = doubles.v[1];
+    double kappa = doubles.v[2];
+    double r3    = doubles.v[3];
+    double r5    = doubles.v[4];
+
+    double delta = 1.e-10;
+    double gamma = 1.e-10;
+    int res;
+    
+    printf("Loaded residuals ready to call solver\n");
+    int m;
+    int n;
+    m   = A.m;
+    n   = A.n;
+
+ solve_kkt_system_no_structs(m,n,
+                             mu,\
+                             H.I,\
+                             H.J,\
+                             H.V,\
+                             H.nnz,\
+                             A.I,\
+                             A.J,\
+                             A.V,\
+                             A.nnz,\
+                             b.v,\
+                             c.v,\
+                             tau,\
+                             kappa,\
+                             delta,\
+                             gamma,\
+                             r1->v,\
+                             r2->v,\
+                             r3,\
+                             r4->v,\
+                             r5,\
+                             dy->v,\
+                             dx->v,\
+                             &dt,\
+                             ds->v,\
+                             &dk );
+
+    printf("Solver return\n");
+
+    // %Check the residuals
+    // n_res_1 = norm(A*dx-dt*b-r1);
+    // n_res_2 = norm(-A'*dy + dt*c -ds -r2);
+    // n_res_3 = norm(b'*dy-c'*dx -dk-r3);
+    // n_res_5 = norm(mu*H*dx+ds-r4);
+    // n_res_4 = norm(kappa*dt+tau*dk-r5);
+    
+    //Generate a CRS version of H 
+    csi* Hi =calloc(H.nnz,sizeof(csi));
+    csi* Hp =calloc(H.n+1,sizeof(csi)); //XXX: With free variables this can be smaller
+    double* Hv =calloc(H.nnz,sizeof(double));  
+    res = umfpack_di_triplet_to_col(H.m,H.n,H.nnz,H.I,H.J,H.V,Hp,Hi,Hv,NULL);     
+    printf("H to CRS %i\n",res); 
+ 
+    //Generate a CRS version of A 
+    csi* Ai =calloc(A.nnz,sizeof(csi));
+    csi* Ap =calloc(A.n+1,sizeof(csi)); //XXX: With free variables this can be smaller
+    double* Av =calloc(A.nnz,sizeof(double));  
+    res = umfpack_di_triplet_to_col(A.m,A.n,A.nnz,A.I,A.J,A.V,Ap,Ai,Av,NULL);      
+    printf("A to CRS %i\n",res); 
+
+    //Calculate the first residual
+    double* res_1 = calloc(A.m,sizeof(double));
+   
+    //void dspmv(int m, int n, double alpha, int* pA, int * iA, double* vA, double* y, double* x)
+    dspmv(A.m,A.n,1.,Ap,Ai,Av,res_1,dx->v);
+    cblas_daxpy(A.m,-dt,b.v,1,res_1,1);
+    cblas_daxpy(A.m,-1,r1->v,1,res_1,1);
+    double n_res_1 = cblas_ddot(A.m,res_1,1,res_1,1); 
+    printf("Norm residual 1 %lf\n",n_res_1);
+    
+    //Calculate the second residual 
+    double* res_2 = calloc(A.n,sizeof(double));
+    dsTpmv(A.m,A.n,-1.,Ap,Ai,Av,res_2,dy->v);
+    cblas_daxpy(A.n,dt,c.v,1,res_2,1);
+    cblas_daxpy(A.n,-1.,ds->v,1,res_2,1);
+    cblas_daxpy(A.n,-1.,r2->v,1,res_2,1);
+    double n_res_2 = cblas_ddot(A.n,res_2,1,res_2,1);
 
     printf("Norm residual 2 %lf \n",n_res_2);
 
@@ -431,8 +613,19 @@ void test_full_hsd_soltuion(void)
     //Calculate the 5th residual
     double n_res_5 = kappa*dt+tau*dk-r5;
     printf("Norm residual 5 %lf \n",n_res_5);
+
+    //Debug stuff
+    write_vector_to_csv("./test/test_data/debug_dy_solution_no_structs.csv",dy->v,dy->n);
+    write_vector_to_csv("./test/test_data/debug_Atdy_solution_no_structs.csv",res_2,A.n); 
+    write_vector_to_csv("./test/test_data/debug_ds_solution_no_structs.csv",ds->v,A.n);
+    write_vector_to_csv("./test/test_data/debug_dt_solution_no_structs.csv",&dt,1);
+    write_vector_to_csv("./test/test_data/debug_dx_solution_no_structs.csv",dx->v,dx->n);
+    write_vector_to_csv("./test/test_data/debug_dk_solution_no_structs.csv",&dk,1);
+    write_vector_to_csv("./test/test_data/debug_r4_solution_no_structs.csv",r4->v,r4->n);
+    write_vector_to_csv("./test/test_data/debug_r2_solution_no_structs.csv",r2->v,r2->n);
     
 }
+
 
 Suite* linear_solver_suite(void)
 {

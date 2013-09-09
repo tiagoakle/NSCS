@@ -27,14 +27,14 @@ while true
     if R.stop
         fprintf('Stop command issued\n');    
     end
-    tic 
+%    tic 
     [v,R]   = centering(v,K,pars,R);     % centering (correction)
-    center_time = toc;
-    fprintf('Centering time %i\n',center_time);
+%    center_time = toc;
+%    fprintf('Centering time %i\n',center_time);
 
-    v.s     = -pars.A'*v.y + ...         % pd-lifting
-        pars.c*v.tau - v.rD0;               
-    
+     v.s     = -pars.A'*v.y + ...         % pd-lifting
+            pars.c*v.tau - v.rD0;               
+
     v.k     = v.k + 1;                   % increment counter
     R       = gettrace(v,pars,R);        % get current data
     

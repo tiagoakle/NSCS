@@ -1,6 +1,7 @@
 #include "nscs.h"
 #include "nscs_sp.h"
-
+#include <math.h>
+#include "barriers.h"
 /**
  * Main entry point for the Non symmetric cone solver.
  *
@@ -13,35 +14,18 @@
  * arrays nK, iK. 
  * 
  * K = K_1xK_2xK_3,.....,K_q
+ *
+ * Where 
+ * each cone is one of: positive orthant (0), second order cone (1), 
+ * semi-definite cone (2), exponential cone (3) , power cone (4).
  * 
- * Where each cone is one of: positive orthant, second order cone, 
- * semi-definite cone, exponential cone, power cone.
+ * tK is an array of integers and of length q. The value tK[0] indicates the type
+ * of cone 1,..., tK[q-1] indicates the type of cone K_q.
  *
- * nK indicates how many instances of each cone appear in the 
- * expression for K.
+ * nK is an array of integers and of size q which parametrizes the size of the cones,
+ * nK[0] is the number of free variables, nK[1] the size of cone 1,..., nK[q-1] the size 
+ * of cone q.
  *
- * nK[0] positive orthant cones can be 0 or 1.
- * nK[1] number of second order cones.
- * nK[2] number of semi-definite cones.
- * nK[3] number of exponential cones.
- * nK[4] number of power cones.
- *
- * The sum of nK must equal q
- *
- * iK is a (q+1) sized array which holds the cumulative count of variables
- * in the cones.
- * 0,...,nK[0]-1     indices of free varaibles
- * nK[0],...,nK[1]-1 indices of the variables in the positive orthant
- * nK[1],...,nK[2]-1 indices of variables in cone K_2
- * .
- * .
- * .
- * nK[q-1],...,nK[q]-1 indices of variables in cone K_q
- *
- * The variables with indices 0,..,K[0]-1 are free variables
- * K[0],...,K[1]-1 non negative
- * K[1],...,K[2]-1 belong to the second order cone
- * 
  *
  * @param A the constraint matrix
  * @param b the vector b 
@@ -56,9 +40,6 @@ int nscs(problem_t* problem, parameters_t* pars, result_t* result)
 
     //Initialize some stuff
     int res;
-
-    //This variable holds a reference to the state
-    state_t state;
     
     //Validate the parameters
     int status = validate_pars(problem,pars);
@@ -67,6 +48,8 @@ int nscs(problem_t* problem, parameters_t* pars, result_t* result)
         return status;
     }
 
+    //This variable holds a reference to the state structure
+    state_t state;
     //Allocate the structure to hold the state of the algorithm
     status    =  allocate_state(state, problem);
     if(status != OK)
@@ -84,11 +67,11 @@ int nscs(problem_t* problem, parameters_t* pars, result_t* result)
     for(m_iter = 0;m_iter < pars->max_iter; m_iter++)
     {
         //Evaluate the barrier function
-        res = eval_barrier(state,problem);
+        eval_hess(*problem,state.x->v,state);
         //Calculate the approximate direction
         res = solve_approximate_tangent_direction(state);
         //Do a line search 
-        res = linesearch(state,pars);
+        res = linesearch_atd(state,*pars,*problem);
         //Calculate the new residuals
         res = calculate_residuals(state);
          
@@ -158,11 +141,13 @@ void free_state(state_t state)
     if(!(state.d_res==NULL))   free_vec(state.d_res);
     if(!(state.c_res==NULL))   free_vec(state.c_res);
    
-    if(!(state.scal==NULL)) free_vec(state.scal);
-    if(!(state.H==NULL))    free_spmat(state.H);
+    if(!((state.H.I==NULL)&&(state.H.J==NULL)&&(state.H.V==NULL))) free_spmat(state.H);
+
 }
 
-
+/**
+ * Validates the parameters provided by the user
+ */
 int validate_pars(problem_t* problem, parameters_t* pars)
 {
     return VALIDATION_OK;
@@ -199,51 +184,6 @@ int  calculate_initial_point(state_t state,parameters_t* pars)
     return 1;
 }
 
-int eval_barrier(state_t state, problem_t* problem)
-{
-    //Clear the present hessian
-    if(state.H==NULL) free_spmat(state.H);
-    
-    //Build the new hessian
-    int k = 0;
-    int nnzH = 0; 
-    //In this first pass we only calculate the nnz of the hessian
-    //Iterate over all the cones and build the hessian for each 
-    int k_count = 0; 
-    int k_type  = 0; 
-    for(k_type = 0;k_type<CONE_TYPES;k_type++)
-    {
-        //For each cone of each type
-        for(k = 0;k<problem->nK[k_type];k++)
-        {
-            int (*foo)(int)  =  (state.hessians_nnz[k_type]); //TODO try to get rid of foo
-            nnzH += foo(problem->iK[k_count]);  //TODO: Figure out the cast and call
-            k_count++;
-        }
-    }
-    
-    //Allocate the space for the Hessian
-    state.H = calloc_spmat(problem->n-problem->free,\
-                           problem->n-problem->free,\
-                           nnzH);
-
-    //In this second pass generate the Hessian
-    csi nnz    = 0; //How many non zeros have we generated
-    
-    //Iterate over all the cones and build the hessian for each 
-    for(k_type = 0;k_type<CONE_TYPES;k_type++)
-    {
-        //For each cone of each type
-        for(k = 0;k<problem->nK[k_type];k++)
-        { 
-            int (*foo)(int,int,vec*) = state.hessians[k_type]; //TODO: Try to get rid of foo
-            nnz += foo(nnz,problem->iK[k_count],state.scal); //TODO: Figure out the cast and call
-            k_count++;
-        }
-    }
- 
-}
-
 
 int calculate_residuals(state_t state)
 {
@@ -260,10 +200,225 @@ int  solve_approximate_tangent_direction(state_t state)
 }
 
 /**
- *
+ * Backtracking linesearch for the aproximate tangent direction
  */
-int linesearch(state_t state ,parameters_t * pars)
+int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
 {
+    double a0 = 1.; //Initial step length
+    double a  = a0;
+//  % set intial step length 
+//    a0 = 1.0;
+//    a  = a0;
+//
+//    if v.dkappa < 0
+//        kapmax = -v.kappa/v.dkappa;
+//        a = min(a,kapmax);
+//    end
+//    if v.dtau < 0
+//        taumax = -v.tau/v.dtau;
+//        a = min(a,taumax);
+//    end
+//    % if either kap or tau is blocking, multiply by eta
+//    % so we do not hit boundary:
+//    if a < a0
+//        a = pars.eta*a;
+//    end
+    if(state.dkappa < 0) a = fmin(a,-state.kappa/state.dkappa);
+    if(state.dtau < 0) a = fmin(a,-state.tau/state.dtau);
+    if(a<a0) a = a*pars.eta;
+
+//    % couter for number of bisections
+//    nsect = 0;
+//    
+//    %Main linesearch loop
+//    for j = 1:pars.lsmaxit
+
+
+//  allocate work vectors for the trial steps
+    double* xa = calloc(state.x->n,sizeof(double));
+    double* sa = calloc(state.x->n,sizeof(double));
+    double* psi  = calloc(state.x->n,sizeof(double));
+    double* hpsi = calloc(state.x->n,sizeof(double));
+    double kappaa;
+    double taua;
+    double dga;
+    double mua;
+
+    //TODO: add clean up before return?
+    if(xa == NULL)   return OUT_OF_MEMORY;
+    if(sa == NULL)   return OUT_OF_MEMORY;
+    if(psi == NULL)  return OUT_OF_MEMORY;
+    if(hpsi == NULL) return OUT_OF_MEMORY;
+
+    int nsect = 0;
+    int j = 0;
+
+    //Define some variables
+    //used in the loop.
+    bool dFeas, pFeas; //Flags to indicate feasiblity
+    bool dosect;       //Flag to indicate if there should be a backtrack
+
+    double centmeas;   //Present value of centrality measure
+
+    for(j=0;j<pars.max_backtrack;j++)
+    {
+//        xa     = v.x     + a * v.dx;
+//        sa     = v.s     + a * v.ds;
+//        taua   = v.tau   + a * v.dtau;
+//        kappaa = v.kappa + a * v.dkappa;
+      cblas_dcopy(state.x->n,state.x->v,1,xa,1);
+      cblas_dcopy(state.s->n,state.s->v,1,sa,1);
+
+      cblas_daxpy(prob.n,a,state.dx->v,1,xa,1);
+      cblas_daxpy(prob.m,a,state.ds->v,1,sa,1);
+      taua      = state.tau + a*state.dtau;
+      kappaa    = state.kappa + a*state.dkappa;
+        
+//        % new duality gap:
+//        dga    = xa'*sa + taua*kappaa;
+//        mua    = dga / (K.nu + 1);
+      dga    = cblas_ddot(state.x->n,xa,1,sa,1) + taua*kappaa;
+      mua    = dga / (prob.nu + 1);  //TODO:Populate prob.nu on init
+
+    //TODO:
+    //Move the calculation of the nnzH to the initialization 
+    //so that problem.nnzH is populated correctly
+    //Add the calculation of problem.nu 
+    //Add the population of problem m,n;
+    //
+    //Check if x,s are feasible wrt the cones
+    dFeas = dual_feas(prob,state.s->v);
+    pFeas = primal_feas(prob,state.x->v);
+
+//        % evaluate barriers at new point:
+//        % check only feasibility, so want = [-1,-1,-1]:
+//        % Evaluate the primal barrier for f,g,H
+//        FP = BarrFuncP(xa,K,[1,1,1]); 
+//        % Check the dual feasibility
+//        FD = BarrFuncD(sa,K,[1,-1,-1]);
+//        
+//        dosect = false; %True if we must backtrack
+//        %If either the primal is infeasible or 
+//        % the dual is infeasible backtrack
+//        if FP{4} < 0 
+//            dosect  = true;
+//            R.block = 'pf';
+//        elseif FD{4} < 0 
+//            dosect  = true;
+//            R.block = 'df';
+//        else %If the iterate is pirmal and dual feasible evaluate the centrality
+//            psi       = sa + mua*FP{2};
+//            centmeas5 = sqrt(psi'*(FP{3}\psi)); %XXX: Linear solve
+//            centmeas = centmeas5;
+//            
+//            if centmeas > mua*pars.theta
+//                dosect  = true;
+//                R.block = 'ce';
+//            end
+//        end
+
+    if(!dFeas){ dosect = true;}
+    else if(!pFeas){dosect = true;}
+    else
+    {
+        //Evaluate the gradient at the preset point
+        eval_grad(prob,xa,psi);
+        //scale by mu and add s to psi
+        cblas_dscal(prob.n,mua,xa,1);
+        cblas_daxpy(prob.n,1.0,sa,1,psi,1);
+        
+        //Evaluate the hessian at the present test point
+        eval_hess(prob,xa,state);
+        
+        //Solve the linear system H(hpsi)=psi
+        int ret = solve_linear_system(hpsi,state.H.I,state.H.J,state.H.V,state.H.nnz,psi,state.H.n);
+        if(ret!=0) return INTERNAL_ERROR; //XXX:We should check for numerical error and not crash 
+        centmeas = cblas_ddot(psi,1,hpsi,1);
+        
+        //Decide if we need to backtrack
+        if(centmeas > mua*pars.theta)
+        {
+            dosect = true;
+        }
+        
+//        
+//        if dosect
+//            a     = a*pars.lscaff; 
+//            nsect = nsect + 1;
+//        else
+//            break;
+//        end
+//        
+//    end %end of main linesearch loop
+//
+
+    }
+
+    if(dosect)
+    {
+        a = a*pars.lscaff;
+        state.nbacktrack += 1; 
+    }
+     
+
+}
+
+    //Free the work vectors 
+    free(xa);
+    free(sa);
+    free(psi);
+    free(hpsi);
+
+//    v.a = a;
+//    
+//    % Check if the linesearch did not find 
+//    % a feasible point in the maximum number of iterations
+//    if j == pars.lsmaxit
+//        xa = v.x + a * v.dx;
+//        FP = BarrFuncP(xa,K,[1,1,-1]);
+//        if FP{4} < 0
+//
+//            error(['linesearch: failed to find feasible point.',...
+//                ' pars.lscaff too close to 1 ???']);
+//        end
+//    end
+//
+//    %Take the step 
+//
+//    % store the previous step
+//    v.xprev     = v.x;
+//    v.gprev     = v.F{2};
+//    v.tauprev   = v.tau;
+//    v.kappaprev = v.kappa;
+//    
+//    % take step:
+//    v.x     = xa;
+//    v.tau   = taua;
+//    v.y     = v.y     + v.a * v.dy;
+//    v.s     = sa;
+//    v.kappa = kappaa;
+//    
+//    % update other quantities:
+//    v.dgap  = v.x'*v.s + v.tau*v.kappa;
+//    v.mu    = v.dgap / (K.nu + 1);
+//    
+//    % "feas" measure, see Sturm:
+//    v.feas  = v.dtauaff/v.tauprev - v.dkappaaff/v.kappaprev;
+//
+//    %Update the residuals
+//    bty  = pars.b'*v.y;
+//    ctx  = pars.c'*v.x;    
+//    v.rA = abs( ctx - bty )/( v.tau + abs(bty) );
+//    
+//    v.rP = (pars.A*v.x - pars.b*v.tau);
+//    v.rD = (-pars.A'*v.y - v.s + pars.c*v.tau);
+//    v.rG = (-ctx + bty - v.kappa);
+//    
+//    v.rPrel = norm( v.rP, 'inf')/pars.relstopP;
+//    v.rDrel = norm( v.rD, 'inf')/pars.relstopD;
+//    v.rGrel = norm( v.rG, 'inf')/pars.relstopG;
+//    v.rArel = v.rA; 
+   
     return OK;
 }
 
@@ -307,4 +462,19 @@ void print_final(state_t state)
 void build_result(state_t state ,result_t* res, parameters_t* pars)
 {
 }
- 
+
+
+//TODO: THIS IS INCOMPLETE
+void init(problem_t prob, state_t state, parameters_t params)
+{
+     //Count the number of non zeros in the new hessian
+    int k = 0;
+    csi nnzH = 0; 
+    for(k=0;k<prob.k_count;k++)
+    {
+        nnzH = cone_nnz(prob.tK[k], prob.nK[k]);
+    }
+    //Allocate the new hessian
+    //state.H = calloc_spmat(problem->n,problem->n,nnzH);
+}
+

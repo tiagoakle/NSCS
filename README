@@ -1,2 +1,29 @@
 Santiago Akle June 2013
 Non symmetric cone solver
+
+matlab contains skajaas solver with some modifications which call the C implementation of some parts 
+of the solver. 
+matlab_minimal contains a version with no heuristics and the minimal implementations
+C contains all c code and C/interface contains the C-MATLAB interface code
+Solver contains a discontinued version of a matlab code
+matlab_explorations contains code to test the calls from matlab to a dylib
+suite_sparse_explorations contains code to test the calls to the suite sparse functions.
+
+Compilers:
+    The fortran compiler used for this project was downloaded from hpc.sourceforge.net
+    The c compliler is the LLVM gcc compiler in Xcode
+
+Libraries 
+    Installed OpenBlas
+    Installed open mpi to /usr/local (by issuing ./configure --prefix=/usr/local) before make
+    (https://sites.google.com/site/dwhipp/tutorials/installing-open-mpi-on-mac-os-x)
+    
+    Building MUMPS,
+        Download from http://mumps.enseeiht.fr/MUMPS_4.10.0.tar.gz
+        Unzip and enter the MUMPS directory 
+        Copy 
+        Make.inc/Makefile.gfortran.PAR  to Makefile.inc
+        modify the include directories in Make.inc to point to /usr/local/include where mpif.h is located
+
+        Install scalapack and blasc and compile
+

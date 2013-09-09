@@ -9,6 +9,7 @@
 #define H_NSCS
 #include "common.h"
 #include "nscs_sp.h"
+#include "math.h"
 //State structure
 typedef struct
 {
@@ -35,37 +36,21 @@ typedef struct
    //Present search direction
    vec*  dy;
    vec*  dx;
-   double dt;
+   double dtau;
    vec*  ds;
-   double dk;
-
-   //Present scaling point
-   vec* scal; 
+   double dkappa;
 
    //Present value of the Hessian
-   spmat* H; 
+   spmat H; 
 
    //Present value of the complementarity
    double mu;
+
    //Present value of the centrality
    double eta;
 
-   //This vector holds pointers to
-   //the functions that return the number of 
-   //non zeros for a Hessians of each cone type.
-   //hessians_nnz[i](dim) returns the number of 
-   //non zeros for a cone of type i of dimension dim 
-   int (*hessians_nnz[CONE_TYPES])(int);
-   
-   //This vector holds pointers to 
-   //the functions that calculate the hessian 
-   //evaluated at the present scaling point.
-   // The call 
-   // nnz = (hessians[i])(first_ix,dim,state); 
-   // returns the number of non zeros and
-   // assigns the triplets I,J,V to state->H
-   // starting at index first_ix. 
-   int (*hessians[CONE_TYPES])(int,int,vec*);
+   //Counters
+   int nbacktrack;
 
 } state_t;
 
@@ -76,12 +61,17 @@ typedef struct
    spmat A;
    vec   b;
    vec   c;
-   csi   *iK;
-   int   *nK;
+   int   *tK;
+   csi   *nK;
+   int   k_count; //Number of cones
    int   m;
    int   n;
-   int   free; //This is equal to iK[0] if nK[0] = 1
-               // if nK[0] = 0 free = 0;
+   double  delta; //Primal regularization
+   double  gamma; //Dual regularization
+   int   free;
+   double nu;     //Complexity
+   csi    nnzH;   //Number of non zeros in the hessian
+
 } problem_t; 
 
 //Enumeration of problem types for the result strucutre
@@ -112,6 +102,11 @@ typedef struct
     bool print;
     int max_iter;
     int max_center_iter;
+    double theta; //Backtracking limit
+    double lscaff; //Backtracking constant
+    double eta;    //Closeness to boundary of first iterate
+    int    max_backtrack;
+
 } parameters_t;
 
 int nscs(problem_t* problem, parameters_t* pars, result_t* result);
@@ -119,9 +114,7 @@ void free_state(state_t state);
 int validate_pars(problem_t* problem, parameters_t* pars);
 int allocate_state(state_t state,problem_t* problem);
 int  calculate_initial_point(state_t state,parameters_t* pars);
-int eval_barrier(state_t state, problem_t* problem);
 int  solve_approximate_tangent_direction(state_t state);
-
 
 bool check_centering_condition(state_t state, parameters_t* pars);
 int calculate_centering_direction(state_t state, parameters_t* pars);
@@ -132,5 +125,6 @@ int check_stopping_criteria(state_t state,parameters_t* pars);
 void print_final(state_t state);
 void build_result(state_t state ,result_t* res, parameters_t* pars);
 
-int linesearch(state_t state ,parameters_t * pars);
+
+int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob);
 #endif
