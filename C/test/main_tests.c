@@ -10,6 +10,12 @@
 int main(void)
 {
 
+ //The multithreading of open blas conflicts with 
+ //the multithreading of check :(. This solves
+ //the issue but the tests might become less representative 
+ //of the real behavior of the program.
+ openblas_set_num_threads(1);
+
 
  //smatvec tests
  int number_failed;
@@ -32,14 +38,6 @@ int main(void)
  srunner_run_all (sr, CK_VERBOSE);
  number_failed = srunner_ntests_failed (sr);
  srunner_free (sr);
- //XXX:
-// //For some reason I have not deduced
-// //calling the test using check hangs.....
-// //so this test was removed from the suite
-////  test_load_csv_and_solve_system();
-//
-//  //TODO: put this in a test case
-//   test_full_hsd_soltuion();
-//   test_full_hsd_soltuion_no_structs();
-// return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+ return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

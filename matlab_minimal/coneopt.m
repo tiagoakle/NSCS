@@ -4,6 +4,7 @@ function R = coneopt(varargin)
 [v,K,pars,R]  = init(varargin{:});
 
 addpath '../C/interface'  %Add the diretory with the interface m files
+addpath '../C/test'
 load_c_library()
 
 while true
@@ -68,6 +69,8 @@ while true
     %-------------------- End of tangent solve ----------------------------------
         
     %-------------------- Start of backtracking linesearch ----------------------
+    %Call the C linesearch
+    [a,nbisections] = line_search_c(v,d,K,pars);
     % set intial step length 
     a0 = 1.0;
     a  = a0;
@@ -108,16 +111,37 @@ while true
         % Check the dual feasibility
         FD = BarrFuncD(sa,K,[1,-1,-1]);
         
+        if j ==1
+            read_s = csvread('first_iter_s.csv');
+            read_s = read_s(2:end);
+            cones  = size(sa,1)/3; 
+            vars   = size(sa,1);
+            permute = zeros(vars,1);
+            permute(1:3:end) = [1:cones];
+            permute(2:3:end) = cones+[1:cones];
+            permute(3:3:end) = 2*cones+[1:cones];
+            p_read_s = zeros(size(read_s));
+            p_read_s(permute) = read_s;
+            keyboard
+         end
+
         dosect = false; %True if we must backtrack
         %If either the primal is infeasible or 
         % the dual is infeasible backtrack
         if FP{4} < 0 
             dosect  = true;
             R.block = 'pf';
+            fprintf('M: Not primal feasible\n');
         elseif FD{4} < 0 
             dosect  = true;
-            R.block = 'df';
+            R.block = 'df'; 
+            fprintf('M: Not dual feasible\n');
         else %If the iterate is pirmal and dual feasible evaluate the centrality
+            
+            %write_vector_bin('feasible_x.bin',xa)
+            %write_matrix_bin('feasible_x_Hessian.bin',FP{3});
+
+            fprintf('M: Eval dist\n');
             psi       = sa + mua*FP{2};
             centmeas5 = sqrt(psi'*(FP{3}\psi)); %XXX: Linear solve
             centmeas = centmeas5;
@@ -134,7 +158,7 @@ while true
         else
             break;
         end
-        
+            
     end %end of main linesearch loop
 
     v.a = a;

@@ -7,12 +7,12 @@ TESTOBJECTS=$(TESTSOURCES:.c=.o)
 TESTOBJECTDIR=./build/test
 
 SRCDIR=./src
-SOURCES=linear_solvers.c nscs_sp.c smatvec.c barriers.c ../test/test_util.c 
+SOURCES=linear_solvers.c nscs_sp.c smatvec.c Barriers.c line_search.c ../test/test_util.c 
 OBJECTS=$(SOURCES:.c=.o)
 OBJECTDIR=./build
 
 NSCSDIR=./src
-NSCSSOURCES=nscs.c nscs_sp.c barriers.c linear_solvers.c smatvec.c ../test/test_util.c
+NSCSSOURCES=nscs.c nscs_sp.c barriers.c linear_solvers.c smatvec.c ../test/test_util.c line_search.c
 NSCSOBJECTS= $(NSCSSOURCES:.c=.o)
 
 STATICLOPENBLAS=/Users/tiago/OpenBLAS/libopenblas.a
@@ -61,7 +61,7 @@ nscs: $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS))
 	$(CC) $(DYLIBFLAGS) -g $^ -o $(LIBOUTDIR)/nscs.dylib $(LIBDIR) $(LIBS)
 
 test: $(addprefix $(TESTOBJECTDIR)/,$(TESTOBJECTS)) $(DYLIB)
-	$(CC) $(addprefix $(TESTOBJECTDIR)/,$(TESTOBJECTS)) -g -o testprog $(LIBDIR) $(LIBS) -llinear_solvers -lcheck
+	$(CC) -undefined error $(addprefix $(TESTOBJECTDIR)/,$(TESTOBJECTS)) -g -o testprog $(LIBDIR) $(LIBS) -llinear_solvers -lcheck
 
 clean:
 	rm $(addprefix $(OBJECTDIR)/,$(OBJECTS))

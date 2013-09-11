@@ -40,6 +40,9 @@ typedef struct
    vec*  ds;
    double dkappa;
 
+   //Present step length
+   double a;
+
    //Present value of the Hessian
    spmat H; 
 

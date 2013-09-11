@@ -23,4 +23,14 @@ double pos_orthant_val(double* x, csi n);
 bool pos_orthant_feas(double* x, csi n);
 void pos_orthant_grad(double* grad, double *x, csi n);
 csi pos_orthant_hessian(int* HI, int* HJ, double* HV, double*x, csi n, double delta);
+
+
+csi exp_complexity();
+csi exp_nnz();
+double exp_val(double* x);
+bool exp_primal_feas(double* x);
+bool exp_dual_feas(double* x);
+void exp_grad(double* grad, double *x);
+csi exp_hessian(int* HI, int* HJ, double* HV, double*x,double delta);
+
 #endif

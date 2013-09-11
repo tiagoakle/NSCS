@@ -79,4 +79,28 @@ int write_vector_to_csv(char* name, double* v, int n)
     fclose(f);
 }
 
+//Reads the vectors written by the matlab write_vector_bin.m file
+int read_vector_bin_size(char* fname)
+{
+    int size; 
+    FILE* f = fopen(fname,"rb");
+    if(f)
+    {
+        fseek(f,0,SEEK_END);
+        size = ftell(f);
+    }
+    fclose(f);
+    return size/sizeof(double); 
+     
+}
 
+void read_vector_bin(char* fname, double* x, int n)
+{
+    int size; 
+    FILE* f = fopen(fname,"rb");
+    if(f)
+    {
+        fread((void*)x,sizeof(double),n,f);
+    }
+    fclose(f); 
+}
