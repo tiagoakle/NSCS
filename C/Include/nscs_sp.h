@@ -39,5 +39,9 @@ vec* calloc_vec(int n);
 
 //Allocates a matrix of size nnz
 spmat* calloc_spmat(int m, int n, int nnz);
+//Frees the vector 
+void free_vec(vec v);
+//Frees the arrays that make the matrix
+void free_spmat(spmat A);
 
 #endif

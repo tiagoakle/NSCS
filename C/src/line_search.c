@@ -4,6 +4,8 @@
 #include "barriers.h"
 #include "line_search.h"
 #include "stdio.h"
+#include "OpenBlAS/cblas.h"
+#include "linear_solvers.h"
 
 /**
  * Wrapper to call from matlab
@@ -93,9 +95,9 @@ int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, doubl
     params.max_backtrack = max_backtrack;
 
     //Allocate space for the hessian!!!
-    state.H.I = calloc(nnzH,sizeof(int));
-    state.H.J = calloc(nnzH,sizeof(int));
-    state.H.V = calloc(nnzH,sizeof(double));
+    state.H.I = (int*)calloc(nnzH,sizeof(int));
+    state.H.J = (int*)calloc(nnzH,sizeof(int));
+    state.H.V = (double*)calloc(nnzH,sizeof(double));
 
     //Call the linesearch
     linesearch_atd(state,params,prob);
@@ -135,7 +137,7 @@ void print_min(double*x, int n, char* name)
  */
 int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
 {
-
+    printf("linesearch \n");
     double a0 = 1.; //Initial step length
     double a  = a0;
 //  % set intial step length 
@@ -167,10 +169,10 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
 
 
 //  allocate work vectors for the trial steps
-    double* xa = calloc(state.x->n,sizeof(double));
-    double* sa = calloc(state.x->n,sizeof(double));
-    double* psi  = calloc(state.x->n,sizeof(double));
-    double* hpsi = calloc(state.x->n,sizeof(double));
+    double* xa = (double*)calloc(state.x->n,sizeof(double));
+    double* sa = (double*)calloc(state.x->n,sizeof(double));
+    double* psi  = (double*)calloc(state.x->n,sizeof(double));
+    double* hpsi = (double*)calloc(state.x->n,sizeof(double));
     double kappaa;
     double taua;
     double dga;
@@ -194,7 +196,7 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
 
     for(j=0;j<pars.max_backtrack;j++)
     {
-         printf("Iterate %i\r",j);
+         printf("Iterate %i,%g,",j,a);
 //        xa     = v.x     + a * v.dx;
 //        sa     = v.s     + a * v.ds;
 //        taua   = v.tau   + a * v.dtau;
@@ -203,7 +205,7 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
       cblas_dcopy(state.s->n,state.s->v,1,sa,1);
 
       cblas_daxpy(prob.n,a,state.dx->v,1,xa,1);
-      cblas_daxpy(prob.m,a,state.ds->v,1,sa,1);
+      cblas_daxpy(prob.n,a,state.ds->v,1,sa,1);
       taua      = state.tau + a*state.dtau;
       kappaa    = state.kappa + a*state.dkappa;
         
@@ -213,9 +215,13 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
       dga    = cblas_ddot(state.x->n,xa,1,sa,1) + taua*kappaa;
       mua    = dga / (prob.nu + 1);  //TODO:Populate prob.nu on init
       
-      //XXX:REMOVE
-      if(j==0)
-      write_vector_to_csv("first_iter_s.csv",sa,state.s->n);
+   //   //XXX:REMOVE
+   //   if(j==0)
+   //   {
+   //   write_vector_to_csv("first_iter_sa.csv",sa,state.s->n);
+   //   write_vector_to_csv("first_iter_ds.csv",state.ds->v,state.s->n);
+   //   write_vector_to_csv("first_iter_s.csv" ,state.s->v,state.s->n);
+   //   }
 
     //TODO:
     //Move the calculation of the nnzH to the initialization 
@@ -224,8 +230,8 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
     //Add the population of problem m,n;
     //
     //Check if x,s are feasible wrt the cones
-    dFeas = dual_feas(prob,state.s->v);
-    pFeas = primal_feas(prob,state.x->v);
+    dFeas = dual_feas(prob,sa);
+    pFeas = primal_feas(prob,xa);
 
 //        % evaluate barriers at new point:
 //        % check only feasibility, so want = [-1,-1,-1]:
@@ -254,14 +260,19 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
 //            end
 //        end
 
-    if(!dFeas){ dosect = true; //printf("C: Not dual feasible\n");
+    
+    if(!pFeas)
+    {
+        dosect = true; printf("C: Not primal feasible\n");
     }
-    else if(!pFeas){dosect = true; //printf("C: Not primal feasible\n");
+    else if(!dFeas)
+    {
+        dosect = true; printf("C: Not dual feasible\n");
     }
     else
     {
 
-        printf("Evaluating gradient\n");
+        printf("Evaluating dist\n");
         //Evaluate the gradient at the preset point
         eval_grad(prob,xa,psi);
         //scale by mu and add s to psi
@@ -269,16 +280,13 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
         cblas_daxpy(prob.n,1.0,sa,1,psi,1);
          
         //Evaluate the hessian at the present test point
-        
-        printf("Evaluating hessian\n");
         eval_hess(prob,xa,state);
          
         fflush(stdout);
         //Solve the linear system H(hpsi)=psi
         int ret = solve_linear_system(hpsi,state.H.I,state.H.J,state.H.V,state.H.nnz,psi,state.H.n);
         if(ret!=0) return INTERNAL_ERROR; //XXX:We should check for numerical error and not crash 
-        centmeas = sqrt(cblas_ddot(psi,1,hpsi,1)); 
-        printf("Calculating hessian norm %g\n",centmeas);
+        centmeas = sqrt(cblas_ddot(prob.n,psi,1,hpsi,1)); 
 
         //Decide if we need to backtrack
         if(centmeas > mua*pars.theta)

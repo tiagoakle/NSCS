@@ -70,7 +70,10 @@ while true
         
     %-------------------- Start of backtracking linesearch ----------------------
     %Call the C linesearch
+    if(v.k==1)
     [a,nbisections] = line_search_c(v,d,K,pars);
+    end
+
     % set intial step length 
     a0 = 1.0;
     a  = a0;
@@ -110,20 +113,38 @@ while true
         FP = BarrFuncP(xa,K,[1,1,1]); 
         % Check the dual feasibility
         FD = BarrFuncD(sa,K,[1,-1,-1]);
-        
-        if j ==1
-            read_s = csvread('first_iter_s.csv');
-            read_s = read_s(2:end);
-            cones  = size(sa,1)/3; 
-            vars   = size(sa,1);
-            permute = zeros(vars,1);
-            permute(1:3:end) = [1:cones];
-            permute(2:3:end) = cones+[1:cones];
-            permute(3:3:end) = 2*cones+[1:cones];
-            p_read_s = zeros(size(read_s));
-            p_read_s(permute) = read_s;
-            keyboard
-         end
+
+        %XXX:Debug stuff
+       % if j ==1
+       %     
+       %     cones  = size(sa,1)/3; 
+       %     vars   = size(sa,1);
+       %     permute = zeros(vars,1);
+       %     permute(1:3:end) = [1:cones];
+       %     permute(2:3:end) = cones+[1:cones];
+       %     permute(3:3:end) = 2*cones+[1:cones];
+       %    
+       %     read_s = csvread('first_iter_s.csv');
+       %     read_s = read_s(2:end);
+       %     
+       %     p_read_s = zeros(size(read_s));
+       %     p_read_s(permute) = read_s;
+
+       %     read_ds = csvread('first_iter_ds.csv');
+       %     read_ds = read_ds(2:end);
+
+       %     p_read_ds = zeros(size(read_ds));
+       %     p_read_ds(permute) = read_ds;
+
+       %     read_sa = csvread('first_iter_sa.csv');
+       %     read_sa = read_sa(2:end);
+
+       %     p_read_sa = zeros(size(read_sa));
+       %     p_read_sa(permute) = read_sa;
+
+
+       %     keyboard
+       %  end
 
         dosect = false; %True if we must backtrack
         %If either the primal is infeasible or 

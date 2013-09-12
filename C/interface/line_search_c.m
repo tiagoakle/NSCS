@@ -54,8 +54,11 @@ function [a,nbisections] = line_search_c(v,d,K,pars)
     permute(3:3:3*K.nexp) = 2*K.nexp+[1:K.nexp]; 
     permute = [[1:K.npos];permute+K.npos];
 
+    
     %Set the number of cones
-    k_count = K.nexp+1; 
+    poscone = 0;
+    if K.npos > 0; poscone = 1;end
+    k_count = K.nexp+poscone; 
     m = size(v.y,1);
     n = size(v.x,1);
 

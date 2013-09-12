@@ -7,10 +7,10 @@
 //Allocates a vector of size n
 vec* calloc_vec(int n)
 {
-    vec* v = calloc(1, sizeof(vec));
+    vec* v = (vec*)calloc(1, sizeof(vec));
     if(v == NULL) return NULL;
 
-    v->v   = calloc(n, sizeof(double));
+    v->v   = (double*)calloc(n, sizeof(double));
     v->n   = n;
     return v;
 }
@@ -18,7 +18,7 @@ vec* calloc_vec(int n)
 //Allocates a matrix of size nnz
 spmat* calloc_spmat(int m, int n, int nnz)
 {
-    spmat* mat = calloc(1,sizeof(spmat));
+    spmat* mat = (spmat*)calloc(1,sizeof(spmat));
     if(mat == NULL) return NULL;
 
     mat->m = m;

@@ -1,7 +1,7 @@
 #include "nscs.h"
 #include "nscs_sp.h"
-#include <math.h>
 #include "barriers.h"
+#include <math.h>
 /**
  * Main entry point for the Non symmetric cone solver.
  *
@@ -132,14 +132,14 @@ int nscs(problem_t* problem, parameters_t* pars, result_t* result)
 void free_state(state_t state)
 {
     //Free the present directions
-    if(!(state.dy==NULL))   free_vec(state.dy);
-    if(!(state.dx==NULL))   free_vec(state.dx);
-    if(!(state.ds==NULL))   free_vec(state.ds);
+    if(!(state.dy==NULL))   free_vec(*state.dy);
+    if(!(state.dx==NULL))   free_vec(*state.dx);
+    if(!(state.ds==NULL))   free_vec(*state.ds);
    
     //(Free the residual vectors
-    if(!(state.p_res==NULL))   free_vec(state.p_res);
-    if(!(state.d_res==NULL))   free_vec(state.d_res);
-    if(!(state.c_res==NULL))   free_vec(state.c_res);
+    if(!(state.p_res==NULL))   free_vec(*state.p_res);
+    if(!(state.d_res==NULL))   free_vec(*state.d_res);
+    if(!(state.c_res==NULL))   free_vec(*state.c_res);
    
     if(!((state.H.I==NULL)&&(state.H.J==NULL)&&(state.H.V==NULL))) free_spmat(state.H);
 

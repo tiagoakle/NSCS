@@ -4,6 +4,32 @@
 #include "nscs_sp.h"
 #include <OpenBlas/cblas.h>
 #include "smatvec.h"
+#include "test_util.h"
+
+//Include some declarations so that we leave them out of the
+//header file that matlab uses
+int solve_kkt_system(double mu,\
+                     spmat H,\
+                     spmat A,\
+                     vec b,\
+                     vec c,\
+                     double tau,\
+                     double kappa,\
+                     double delta,\
+                     double gamma,\
+                     vec r1,\
+                     vec r2,\
+                     double r3,\
+                     vec r4,\
+                     double r5,\
+                     vec dy,\
+                     vec dx,\
+                     double* dt,\
+                     vec ds,\
+                     double* dk );
+
+
+
 
 //This function builds the compressed column row structure and 
 //    then calls umfpack to solve. Ax=b
@@ -18,9 +44,9 @@ int solve_linear_system(double* x, int* I, int* J, double* V, int nnz, double *b
   
      //Convert to compressed column form
      //Allocate the space 
-     int* Ai=calloc(nnz,sizeof(int));
-     int* Ap=calloc(n+1,sizeof(int));
-     double* Ax=calloc(nnz,sizeof(double)); 
+     int* Ai=(int*)calloc(nnz,sizeof(int));
+     int* Ap=(int*)calloc(n+1,sizeof(int));
+     double* Ax=(double*)calloc(nnz,sizeof(double)); 
      int* Map=NULL;
      //Execute the call
      int status;
@@ -162,17 +188,17 @@ int form_kkt_system( double mu,\
 
     //Allocate space for the new triplet form
     int nnz = m + 2*nnzA + nnzH;
-    int* I = calloc(nnz,sizeof(int));
-    int* J = calloc(nnz,sizeof(int));
-    double* V = calloc(nnz,sizeof(double));
+    int* I = (int*)calloc(nnz,sizeof(int));
+    int* J = (int*)calloc(nnz,sizeof(int));
+    double* V = (double*)calloc(nnz,sizeof(double));
     
      form_kkt_system_triplets(mu, hI, hJ, hV, nnzH, aI, aJ, aV, nnzA, m, n, delta, gamma, I, J, V);
          
      //Convert to compressed column form
      //Allocate the space 
-     (*Ai)=calloc(nnz,sizeof(csi));
-     (*Ap)=calloc(n+m+1,sizeof(csi));
-     (*Av)=calloc(nnz,sizeof(double)); 
+     (*Ai)=(csi*)calloc(nnz,sizeof(csi));
+     (*Ap)=(csi*)calloc(n+m+1,sizeof(csi));
+     (*Av)=(double*)calloc(nnz,sizeof(double)); 
      int* Map=NULL;
 
     //Execute the call to the compression routine
@@ -476,7 +502,7 @@ int solve_kkt_system(double mu,\
     //Allocate a working vector
     vec r7;
     r7.n = r2.n;
-    r7.v = calloc(r7.n,sizeof(double));
+    r7.v = (double*)calloc(r7.n,sizeof(double));
 
 
     cblas_dcopy(r2.n,r2.v,1,r7.v,1);
@@ -508,7 +534,7 @@ int solve_kkt_system(double mu,\
     //Call the solver 
     
     //Build the rhs
-    double* rhs  = calloc(A.n+A.m,sizeof(double));
+    double* rhs  = (double*)calloc(A.n+A.m,sizeof(double));
     int i = 0;
     for(i=0;i<A.m;i++)
         rhs[i] = b.v[i];
@@ -524,7 +550,7 @@ int solve_kkt_system(double mu,\
     //Pointer for the factorization
     void* Numeric;
     //Pointer to the solution
-    double* tm_1 = calloc(A.n+A.m,sizeof(double));
+    double* tm_1 = (double*)calloc(A.n+A.m,sizeof(double));
    
     int res;
     //From the kkt system
@@ -611,9 +637,9 @@ int solve_kkt_system(double mu,\
     cblas_dcopy(A.n,tm_1+A.m,1,dx.v,1);
 
     //We need the csr form of H for the product
-    csi* Hi =calloc(H.nnz,sizeof(csi));
-    csi* Hp =calloc(H.n+1,sizeof(csi)); //XXX: With free variables this can be smaller
-    double* Hv =calloc(H.nnz,sizeof(double));  
+    csi* Hi =(csi*)calloc(H.nnz,sizeof(csi));
+    csi* Hp =(csi*)calloc(H.n+1,sizeof(csi)); //XXX: With free variables this can be smaller
+    double* Hv = (double*)calloc(H.nnz,sizeof(double));  
     res = umfpack_di_triplet_to_col(H.m,H.n,H.nnz,H.I,H.J,H.V,Hp,Hi,Hv,NULL);     
     if(res!=0)
     {

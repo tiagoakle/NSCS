@@ -1,6 +1,10 @@
 #ifndef H_LINE_SEARCH
 #define H_LINE_SEARCH
 //int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, double tau, double kappa, double* dx,\
                                                                                                     double* dy,\
                                                                                                     double* ds,\
@@ -17,5 +21,9 @@ int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, doubl
                                                                                                     int nnzH,\
                                                                                                     double* a,\
                                                                                                     int* nbacktrack);
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
