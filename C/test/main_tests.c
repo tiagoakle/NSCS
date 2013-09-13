@@ -5,6 +5,7 @@
 #include "test_linear_solver.h"
 #include "test_smatvec.h"
 #include "test_barriers.h"
+#include "cblas.h"
 
 
 int main(void)
@@ -16,7 +17,7 @@ int main(void)
  //of the real behavior of the program.
  openblas_set_num_threads(1);
 
-
+//test_general_hessian();
  //smatvec tests
  int number_failed;
  Suite *s = matvec_suite();

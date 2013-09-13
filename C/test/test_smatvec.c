@@ -3,6 +3,7 @@
 #include "smatvec.h"
 #include "test_util.h"
 #include "test_smatvec.h"
+#include "umfpack.h"
 
 int tn = 5 ;
 csi tAp [ ] = {0, 2, 5, 9, 10, 12} ;
@@ -27,20 +28,20 @@ void LoadSystemData(char * nameA,\
    //XXX: If the files are made in int and we read size_t we will have a crash
     read_csv_size(nameA,m,n,nnz);
     //printf("File %s contains sparse matrix of size %i, %i ,%i\n",nameA,*m,*n,*nnz);
-    csi* I = calloc(*nnz,sizeof(csi));
-    csi* J = calloc(*nnz,sizeof(csi));
-    double* V = calloc(*nnz,sizeof(double));
+    csi* I = (csi*)calloc(*nnz,sizeof(csi));
+    csi* J = (csi*)calloc(*nnz,sizeof(csi));
+    double* V = (double*)calloc(*nnz,sizeof(double));
     read_csv_triplets(nameA,I,J,V);
     
     //printf("First non zero %d, %d ,%lf\n",*I,*J,*V);
-    *nvector = calloc(*n,sizeof(double));
+    *nvector = (double*)calloc(*n,sizeof(double));
     read_vector(namen,*nvector);
-    *mvector = calloc(*m,sizeof(double));
+    *mvector = (double*)calloc(*m,sizeof(double));
     read_vector(namem,*mvector);
 
-    (*Ap) = calloc(*n+1,sizeof(csi));
-    (*Ai) = calloc(*nnz,sizeof(csi));
-    (*Av) = calloc(*nnz,sizeof(double));
+    (*Ap) = (csi*)calloc(*n+1,sizeof(csi));
+    (*Ai) = (csi*)calloc(*nnz,sizeof(csi));
+    (*Av) = (double*)calloc(*nnz,sizeof(double));
     
     //After reading the test matrix convert it into CSR
 
@@ -61,7 +62,7 @@ START_TEST (small_example)
   csi n = 5;
   csi nnz = 12;
    
-  double* y = calloc(m,sizeof(double));
+  double* y = (double*)calloc(m,sizeof(double));
   //Now call the smvp
   double alpha = 1;
   dspmv(m, n, alpha, tAp, tAi, tAx, y, tx);
@@ -92,7 +93,7 @@ START_TEST (small_example_transpose)
   csi n = 5;
   csi nnz = 12;
    
-  double* y = calloc(m,sizeof(double));
+  double* y = (double*)calloc(m,sizeof(double));
   //Now call the smvp
   double alpha = 1;
   dsTpmv(m, n, alpha, tAp, tAi, tAx, y, tx);
@@ -129,7 +130,7 @@ START_TEST (direct_product_no_empty_cols)
   char* namey = "./test/test_data/y1.csv";
   LoadSystemData(nameA,namex,namey,&Ap,&Ai,&Av,&m,&n,&nnz,&x,&yc);
 
-  double* y = calloc(m,sizeof(double));
+  double* y = (double*)calloc(m,sizeof(double));
   //Now call the smvp
   double alpha = 1;
   dspmv(m, n, alpha, Ap, Ai, Av, y, x);
@@ -169,7 +170,7 @@ START_TEST (direct_product_with_empty_cols)
   char* namey = "./test/test_data/y3.csv";
   LoadSystemData(nameA,namex,namey,&Ap,&Ai,&Av,&m,&n,&nnz,&x,&yc);
 
-  double* y = calloc(m,sizeof(double));
+  double* y = (double*)calloc(m,sizeof(double));
   //Now call the smvp
   double alpha = 1;
   dspmv(m, n, alpha, Ap, Ai, Av, y, x);
@@ -215,7 +216,7 @@ START_TEST (transpose_product_no_empty_cols)
   LoadSystemData(nameA,namen,namem,&Ap,&Ai,&Av,&m,&n,&nnz,&nvec,&mvec);
 
 
-    double* prod_res = calloc(n,sizeof(double));
+    double* prod_res = (double*)calloc(n,sizeof(double));
     //Now call the smvp
     double alpha = 1;
     dsTpmv( m, n, alpha, Ap, Ai, Av, prod_res, mvec);
@@ -259,7 +260,7 @@ START_TEST (transpose_product_with_empty_cols)
   LoadSystemData(nameA,namen,namem,&Ap,&Ai,&Av,&m,&n,&nnz,&nvec,&mvec);
 
 
-    double* prod_res = calloc(n,sizeof(double));
+    double* prod_res = (double*)calloc(n,sizeof(double));
     //Now call the smvp
     double alpha = 1;
     dsTpmv( m, n, alpha, Ap, Ai, Av, prod_res, mvec);
@@ -304,7 +305,7 @@ START_TEST (scalar_case)
   LoadSystemData(nameA,namen,namem,&Ap,&Ai,&Av,&m,&n,&nnz,&nvec,&mvec);
 
 
-    double* y = calloc(n,sizeof(double));
+    double* y = (double*)calloc(n,sizeof(double));
     //Now call the smvp
     double alpha = 1;
 
@@ -334,6 +335,37 @@ START_TEST (scalar_case)
 }
 END_TEST
 
+
+START_TEST(test_cyclic)
+{
+    csi n = 100000;
+    csi i = 0;
+    double* x = (double*)calloc(n,sizeof(double));
+    double* Hx = (double*)calloc(n,sizeof(double));
+
+    csi* I = (csi*)calloc(n,sizeof(csi));
+    csi* J = (csi*)calloc(n,sizeof(csi));
+    double* V = (double*)calloc(n,sizeof(double));
+
+    for(i=0;i<n-1;i++){ I[i] = i; J[i] = i+1; V[i] = 1.; x[i] = i;}
+    J[n-1] = 0;
+    x[n-1] = n-1;
+    I[n-1] = n-1;
+    
+    csi* Ai = (csi*)calloc(n,sizeof(csi));
+    csi* Ap = (csi*)calloc(n+1,sizeof(csi));
+    double* Av = (double*)calloc(n,sizeof(double));
+    csi* Map = NULL;
+
+    int status  =  umfpack_di_triplet_to_col(n,n,n,I,J,V,Ap,Ai,Av,Map); 
+    printf("status: %i\n",status);
+    dspmv(n,n,1.0,Ap,Ai,Av,Hx,x);
+
+    for(i=0;i<n-1;i++) ck_assert(Hx[i]==x[i+1]);
+    ck_assert(Hx[n-1]==x[0]);
+}
+END_TEST
+
 Suite* matvec_suite(void)
 {
     Suite* suite = suite_create("Smatvec");
@@ -345,6 +377,7 @@ Suite* matvec_suite(void)
     tcase_add_test(tc,direct_product_with_empty_cols);
     tcase_add_test(tc,transpose_product_no_empty_cols);
     tcase_add_test(tc,transpose_product_with_empty_cols);
+    tcase_add_test(tc,test_cyclic);
     suite_add_tcase(suite,tc);
     return suite;
 }

@@ -40,12 +40,17 @@ function [a,nbisections] = line_search_c(v,d,K,pars)
    % K      = getbarrpar(K);
 
     %The first cone is the positive orthant
-    nK(1) = K.npos;
-    tK(1) = 0;
+     cones = 0;
+    %The first cone is the positive orthant
+    if(K.npos ~= 0)
+        nK(1) = K.npos;
+        tK(1) = 0;
+        cones = 1;
+    end
     %Then the exponential cones
-    nK(2:K.nexp+1) = 3;
-    tK(2:K.nexp+1) = 3; 
-     
+    nK(1+cones:K.nexp+cones) = 3;
+    tK(1+cones:K.nexp+cones) = 3; 
+    
     ne = 3*K.nexp; %total number of variables in the exponential cones
     %We need to permute the variables in the range (K.npos+1, to K.npos+3*K.nexp) in vectors x,s,dx,ds
     permute = zeros(ne,1);

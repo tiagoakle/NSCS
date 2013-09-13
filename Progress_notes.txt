@@ -1,2 +1,5 @@
 Presently the code does all the linear algebra in 
-C 
+
+IMPORTANT TO DOS:
+The criteria for dual feasibility has to be checked 
+Skajaa and Boyd dont match.

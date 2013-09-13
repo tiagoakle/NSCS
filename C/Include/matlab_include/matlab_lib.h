@@ -1,10 +1,11 @@
-#ifndef H_LINE_SEARCH
-#define H_LINE_SEARCH
+#ifndef H_MATLAB
+#define H_MATLAB
+
+#define csi int
 //int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob);
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, double tau, double kappa, double* dx,\
                                                                                                     double* dy,\
                                                                                                     double* ds,\
@@ -86,9 +87,15 @@ void dummy_copy(double* Out, double* In, int n);
 //                     double* dt,\
 //                     vec ds,\
 //                     double* dk);
+//
+
+void eval_hess_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* HI, int* HJ, double* HV);
+void primal_feas_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* feas);
+void dual_feas_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* feas);
+void eval_grad_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, double* g);
 #ifdef __cplusplus
 }
 #endif
 
-
 #endif
+

@@ -1,4 +1,4 @@
-CC=llvm-g++-4.2
+CC=llvm-gcc-4.2
 CFLAGS=-fPIC
 
 
@@ -10,13 +10,10 @@ TESTDIR=./test
 TESTSOURCES=test_util.c test_linear_solver.c test_smatvec.c main_tests.c test_barriers.c 
 TESTOBJECTS=$(TESTSOURCES:.c=.o)
 
-SOURCES=linear_solvers.c nscs_sp.c smatvec.c Barriers.c line_search.c ../test/test_util.c 
-OBJECTS=$(SOURCES:.c=.o)
-
 CPPSOURCES=
 CPPOBJECTS=$(CPPSOURCES:.cpp=.o)
 
-NSCSSOURCES=nscs.c nscs_sp.c Barriers.c linear_solvers.c smatvec.c ../test/test_util.c line_search.c
+NSCSSOURCES=nscs.c nscs_sp.c Barriers.c linear_solvers.c smatvec.c line_search.c test_util.c matlab_wrappers.c
 NSCSOBJECTS= $(NSCSSOURCES:.c=.o)
 
 STATICLOPENBLAS=/Users/tiago/OpenBLAS/libopenblas.a
@@ -45,12 +42,12 @@ IDIRS= -I ../../SuiteSparse/AMD/Include \
 	   -I ../../ \
 	   -I ./test
 
-DYLIB=liblinear_solvers.dylib
+DYLIB=nscs.dylib
 LIBOUTDIR=./Lib
 DYLIBFLAGS=-dynamiclib -undefined error 
 
 
-all: $(DYLIB) nscs
+all: $(DYLIB) test
 
 $(OBJECTDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -g $(IDIRS) -c $< -o $@
@@ -58,21 +55,13 @@ $(OBJECTDIR)/%.o: $(SRCDIR)/%.c
 $(OBJECTDIR)/%.o: $(TESTDIR)/%.c
 	$(CC) $(CFLAGS) -g $(IDIRS) -c $< -o $@
 
-$(DYLIB): $(addprefix $(OBJECTDIR)/,$(OBJECTS))
+$(DYLIB): $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS))
 	$(CC) $(DYLIBFLAGS) -g $^ -o $(LIBOUTDIR)/$@ $(LIBDIR) $(LIBS)
 
-nscs: $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS)) build/line_search.o
-	$(CC) $(DYLIBFLAGS) -g $^ -o $(LIBOUTDIR)/nscs.dylib $(LIBDIR) $(LIBS)
-
-nscspp:  $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS)) $(addprefix $(OBJECTDIR)/,$(CPPOBJECTS))
-	$(CC) $(DYLIBFLAGS) -g $^ -o $(LIBOUTDIR)/nscs.dylib $(LIBDIR) $(LIBS)
-
-test: $(addprefix $(OBJECTDIR)/,$(TESTOBJECTS)) $(DYLIB)
-	$(CC) -undefined error $(addprefix $(OBJECTDIR)/,$(TESTOBJECTS)) -g -o testprog $(LIBDIR) $(LIBS) -llinear_solvers -lcheck
+test: $(addprefix $(OBJECTDIR)/,$(TESTOBJECTS)) $(addprefix $(OBJECTDIR)/,$(OBJECTS)) $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS)) $(addprefix $(OBJECTDIR)/,$(CPPOBJECTS)) 
+	$(CC) -undefined error $^ -g -o testprog $(LIBDIR) $(LIBS) -lcheck
 
 clean:
-	rm $(addprefix $(OBJECTDIR)/,$(OBJECTS))
-	rm $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS))
-	rm $(LIBOUTDIR)/*.dylib
-	rm $(addprefix $(OBJECTDIR)/,$(TESTOBJECTS)) 
+	rm $(OBJECTDIR)/*.o
 	rm testprog
+	rm $(LIBOUTDIR)/$(DYLIB)

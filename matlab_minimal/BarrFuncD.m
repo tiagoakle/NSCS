@@ -88,19 +88,10 @@ if ~isempty(x1)
     
     %scale vars to dual: HOW??
     % THIS IS NOT CORRECT RIGHT NOW!
-    %x1t = x1;
-    %x1  = -x3;
-    %x2  = exp(1)*x2;
-    %x3  = -x1t;
-
-    %XXX: Changed akle
-
     x1t = x1;
-    x1  = -x2;
-    x2  = exp(1)*x3;
+    x1  = -x3;
+    x2  = exp(1)*x2;
     x3  = -x1t;
-
-
 
     [FLOG,GLOG,HLOG,feasLOG] = BarrFuncLog(x1,x2,x3,K,want);
 
