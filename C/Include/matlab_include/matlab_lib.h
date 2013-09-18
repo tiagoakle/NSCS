@@ -93,6 +93,9 @@ void eval_hess_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* 
 void primal_feas_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* feas);
 void dual_feas_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* feas);
 void eval_grad_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, double* g);
+void eval_cent_meas_no_structs(csi k_count,csi* nK, int* tK, double delta,\
+                               double* x, double* s, csi n, csi nnzH, double mua,\
+                               double* psi, double * hpsi, double* centmeas);
 #ifdef __cplusplus
 }
 #endif

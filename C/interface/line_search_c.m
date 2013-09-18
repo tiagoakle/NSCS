@@ -72,7 +72,8 @@ function [a,nbisections] = line_search_c(v,d,K,pars)
     pdx = full(v.dx(permute));
     pds = full(v.ds(permute));
     y   = full(v.y);
-    ret = calllib('nscs','linesearch_atd_no_structs',m,n,px,v.y,ps,v.tau,v.kappa,pdx,v.dy,pds,v.dtau,v.dkappa,pars.lscaff,pars.eta,pars.theta,pars.lsmaxit,k_count,nK,tK,K.nu,nnzH,p_a,p_i);
+    pdy = full(v.dy);
+    ret = calllib('nscs','linesearch_atd_no_structs',m,n,px,y,ps,v.tau,v.kappa,pdx,pdy,pds,v.dtau,v.dkappa,pars.lscaff,pars.eta,pars.theta,pars.lsmaxit,k_count,nK,tK,K.nu,nnzH,p_a,p_i);
     a = p_a.value;
     nbisections = p_i.value;
 end

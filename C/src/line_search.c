@@ -6,6 +6,7 @@
 #include "stdio.h"
 #include "OpenBlAS/cblas.h"
 #include "linear_solvers.h"
+#include "eval_cent_meas.h"
 
 /**
  * Backtracking linesearch for the aproximate tangent direction
@@ -35,6 +36,7 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
     if(state.dkappa < 0) a = fmin(a,-state.kappa/state.dkappa);
     if(state.dtau < 0) a = fmin(a,-state.tau/state.dtau);
     if(a<a0) a = a*pars.eta;
+    printf("C: Initial a: %g\n",a);
 
 //    % couter for number of bisections
 //    nsect = 0;
@@ -71,7 +73,8 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
 
     for(j=0;j<pars.max_backtrack;j++)
     {
-         printf("Iterate %i,%g,",j,a);
+         dosect = false;
+         printf("Iterate %i,%g\n",j,a);
 //        xa     = v.x     + a * v.dx;
 //        sa     = v.s     + a * v.ds;
 //        taua   = v.tau   + a * v.dtau;
@@ -146,29 +149,27 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
     }
     else
     {
-
-        printf("Evaluating dist\n");
-        //Evaluate the gradient at the preset point
-        eval_grad(prob,xa,psi);
-        //scale by mu and add s to psi
-        cblas_dscal(prob.n,mua,xa,1);
-        cblas_daxpy(prob.n,1.0,sa,1,psi,1);
-         
-        //Evaluate the hessian at the present test point
-        eval_hess(prob,xa,state);
-         
-        fflush(stdout);
-        //Solve the linear system H(hpsi)=psi
-        int ret = solve_linear_system(hpsi,state.H.I,state.H.J,state.H.V,state.H.nnz,psi,state.H.n);
-        if(ret!=0) return INTERNAL_ERROR; //XXX:We should check for numerical error and not crash 
-        centmeas = sqrt(cblas_ddot(prob.n,psi,1,hpsi,1)); 
-
+        //Evaluate the gradient and hessian at the preset point
+        //eval_grad(prob,xa,psi);
+        //eval_hess(prob,xa,state);
+        ////scale by mu and add s to psi
+        //cblas_dscal(prob.n,mua,xa,1);
+        //cblas_daxpy(prob.n,1.0,sa,1,psi,1);
+        //  
+        ////Solve the linear system H(hpsi)=psi
+        //int ret = solve_linear_system(hpsi,state.H.I,state.H.J,state.H.V,state.H.nnz,psi,state.H.n);
+        //if(ret!=0){printf("Error solving linear system ret:%i, n:%i, nnz:%i",ret,state.H.n, state.H.nnz); return INTERNAL_ERROR; }//XXX:We should check for numerical error and not crash 
+      
+        //centmeas = sqrt(cblas_ddot(prob.n,psi,1,hpsi,1)); 
+        //
+        centmeas = eval_cent_meas(prob,xa,sa,state,mua,psi,hpsi);
         //Decide if we need to backtrack
         if(centmeas > mua*pars.theta)
         {
             dosect = true;
         }
         
+        printf("Evaluating dist: %g, %g, %i:\n",centmeas,mua*pars.theta,dosect);
 //        
 //        if dosect
 //            a     = a*pars.lscaff; 
@@ -186,6 +187,10 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
     {
         a = a*pars.lscaff;
         state.nbacktrack += 1; 
+    }
+    else
+    {
+        break;
     }
      
 

@@ -7,6 +7,7 @@
 bool primal_feas(problem_t prob, double* x);
 bool dual_feas(problem_t prob, double*x );
 double barrier_complexity(problem_t prob);
+double eval_barrier(problem_t prob, double* x);
 void eval_grad(problem_t prob, double* x, double* grad);
 void eval_hess(problem_t prob, double* x, state_t state);
 csi hessian_nnz(problem_t prob);

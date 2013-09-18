@@ -13,7 +13,7 @@ TESTOBJECTS=$(TESTSOURCES:.c=.o)
 CPPSOURCES=
 CPPOBJECTS=$(CPPSOURCES:.cpp=.o)
 
-NSCSSOURCES=nscs.c nscs_sp.c Barriers.c linear_solvers.c smatvec.c line_search.c test_util.c matlab_wrappers.c
+NSCSSOURCES=nscs.c nscs_sp.c Barriers.c linear_solvers.c smatvec.c line_search.c test_util.c matlab_wrappers.c eval_cent_meas.c
 NSCSOBJECTS= $(NSCSSOURCES:.c=.o)
 
 STATICLOPENBLAS=/Users/tiago/OpenBLAS/libopenblas.a

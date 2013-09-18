@@ -70,9 +70,9 @@ while true
         
     %-------------------- Start of backtracking linesearch ----------------------
     %Call the C linesearch
-    if(v.k==1)
-    %[a,nbisections] = line_search_c(v,d,K,pars);
-    end
+%    if v.k == 1
+      [c_a,nbisections] = line_search_c(v,d,K,pars);
+%    end
 
     % set intial step length 
     a0 = 1.0;
@@ -119,32 +119,53 @@ while true
         if(~isempty(FP{3})) 
             [H] = eval_hessian_c(K,xa);
             g   = eval_grad_c(K,xa);
-            fprintf('Hessian difference %g \n', full(max(max(abs(H-FP{3})))));
-            fprintf('Gradient difference %g \n',max(abs(g-FP{2})));
+            HD  = full(max(max(abs(H-FP{3}))));
+            GD  = max(abs(g-FP{2}));
+            if HD > 1e-5
+                fprintf(' LARGE Hessian difference %g ', HD );
+            end
+            if GD > 1e-5
+                fprintf('LARGE Gradient difference %g ', GD );
+            end
         end
         % Check the dual feasibility
         FD = BarrFuncD(sa,K,[1,-1,-1]);
         dual_feasible = eval_dual_feas_c(K,sa);
-        fprintf('Primal (C,M):(%i,%i) Dual (C,M):(%i,%i) \n',FP{4},primal_feasible,dual_feasible,FD{4});
+
+        if(FP{4}~=primal_feasible)
+            fprintf('Inconsistent feasiblity criteria for the primal (C:%i,M:%i)\n',primal_feasible,FP{4});
+        end
+        if(dual_feasible~=FD{4})
+            fprintf('Inconsistent feasiblity criteria for the dual (C:%i,M:%i)\n',dual_feasible,FD{4});
+        end
+        
 
         dosect = false; %True if we must backtrack
         %If either the primal is infeasible or 
         % the dual is infeasible backtrack
-        if FP{4} < 0 
+        if ~dual_feasible < 0 
             dosect  = true;
             R.block = 'pf';
-        elseif FD{4} < 0 
+        elseif ~primal_feasible < 0 
             dosect  = true;
             R.block = 'df'; 
         else %If the iterate is pirmal and dual feasible evaluate the centrality
             
-            %write_vector_bin('feasible_x.bin',xa)
-            %write_matrix_bin('feasible_x_Hessian.bin',FP{3});
-
-            psi       = sa + mua*FP{2};
-            centmeas5 = sqrt(psi'*(FP{3}\psi)); %XXX: Linear solve
-            centmeas = centmeas5;
+           % psi       = sa + mua*FP{2};
+           % centmeas5 = sqrt(psi'*(FP{3}\psi)); %XXX: Linear solve
+           % centmeas = centmeas5;
             
+            [centmeas] = eval_centmeas_c(K,xa,sa,mua);
+           
+         %   %XXX debug
+         %   m_hpsi = FP{3}\psi;
+         %   fprintf('Ndiff of Hinvpsi: %g\n', norm(hpsi-m_hpsi)); 
+         %   fprintf('Ndiff of psi: %g\n', norm(psi-c_psi)); 
+         %   fprintf('Ndiff of H %g\n',full(max(max(abs(H-FP{3})))));
+         %   fprintf('Ndiff of g %g\n',full(max(abs(gr-FP{2}))));
+         %   fprintf('mua_mat %f\n',mua);
+         %   fprintf('Centmeas: C: %f M: %f, lim: %f\n',c_centmeas, centmeas, mua*pars.theta);
+
             if centmeas > mua*pars.theta
                 dosect  = true;
                 R.block = 'ce';
@@ -161,6 +182,7 @@ while true
     end %end of main linesearch loop
 
     v.a = a;
+    fprintf('C linesearch a, M linesearch a: %g, %g \n',c_a,v.a);
     
     % Check if the linesearch did not find 
     % a feasible point in the maximum number of iterations

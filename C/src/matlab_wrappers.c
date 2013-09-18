@@ -2,6 +2,7 @@
 #include "nscs_sp.h"
 #include "nscs.h"
 #include "matlab_include/matlab_lib.h"
+#include "eval_cent_meas.h"
 //Contains the matlab wrappers for certain calls to the library
 
 //The following functions should substitute the solve KKT system call
@@ -45,7 +46,7 @@ int solve_kkt_system_no_structs(int m, int n,
    H.I   = Hi;
    H.J   = Hj;
    H.V   = Hv;
-
+  
    spmat A;
    A.m   = m;
    A.n   = n;
@@ -213,9 +214,11 @@ int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, doubl
     params.max_backtrack = max_backtrack;
 
     //Allocate space for the hessian!!!
-    state.H.I = (int*)calloc(nnzH,sizeof(int));
-    state.H.J = (int*)calloc(nnzH,sizeof(int));
-    state.H.V = (double*)calloc(nnzH,sizeof(double));
+    state.H.I   = (int*)calloc(nnzH,sizeof(int));
+    state.H.J   = (int*)calloc(nnzH,sizeof(int));
+    state.H.V   = (double*)calloc(nnzH,sizeof(double));
+    state.H.n   = n;
+    state.H.nnz = nnzH;
 
     //Call the linesearch
     linesearch_atd(state,params,prob);
@@ -278,4 +281,26 @@ void dual_feas_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* 
    prob.delta = 0.0;
    state_t stat;
    *feas = dual_feas(prob,x);
+}
+
+void eval_cent_meas_no_structs(csi k_count, csi* nK, int* tK, double delta, double* x, double* s, csi n, csi nnzH, double mua, double* psi, double * hpsi, double* centmeas)
+{
+   problem_t prob;
+   prob.k_count = k_count;
+   prob.tK = tK;
+   prob.nK = nK;
+   prob.delta = 0.0;
+   prob.n    = n;
+    //Allocate space for the hessian
+   state_t state; 
+   state.H.I   = (csi*)calloc(nnzH,sizeof(csi));
+   state.H.J   = (csi*)calloc(nnzH,sizeof(csi));
+   state.H.V   = (double*)calloc(nnzH,sizeof(double));
+   state.H.n   = n;
+   state.H.nnz = nnzH;
+   //Call the function
+   *centmeas = eval_cent_meas(prob,  x,  s, state,  mua, psi, hpsi);
+   free(state.H.I);
+   free(state.H.J);
+   free(state.H.V);
 }
