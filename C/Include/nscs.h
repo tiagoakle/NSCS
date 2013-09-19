@@ -128,8 +128,5 @@ int check_stopping_criteria(state_t state,parameters_t* pars);
 void print_final(state_t state);
 void build_result(state_t state ,result_t* res, parameters_t* pars);
 
-int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob);
-
-
 int calculate_residuals(state_t state);
 #endif

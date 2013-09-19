@@ -19,6 +19,7 @@
 #define OK 0
 #define VALIDATION_OK 0
 #define VALIDATION_ERROR 1
+#define BACKTRACK_FAIL 2
 
 //Other errors
 #define CENTER_ITERS_EXCEEDED -2

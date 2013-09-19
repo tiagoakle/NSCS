@@ -6,7 +6,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, double tau, double kappa, double* dx,\
+int linesearch_atd_no_structs( int m, int n, double* x, double* y, double* s, double tau, double kappa, double* dx,\
                                                                                                     double* dy,\
                                                                                                     double* ds,\
                                                                                                     double  dtau,\

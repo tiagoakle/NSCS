@@ -71,7 +71,7 @@ while true
     %-------------------- Start of backtracking linesearch ----------------------
     %Call the C linesearch
 %    if v.k == 1
-      [c_a,nbisections] = line_search_c(v,d,K,pars);
+     [c_a,nbisections] = line_search_c(v,d,K,pars);
 %    end
 
     % set intial step length 

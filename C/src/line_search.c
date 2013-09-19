@@ -1,55 +1,34 @@
 #include "nscs.h"
 #include "nscs_sp.h"
-#include <math.h>
 #include "barriers.h"
 #include "line_search.h"
 #include "stdio.h"
 #include "OpenBlAS/cblas.h"
 #include "linear_solvers.h"
 #include "eval_cent_meas.h"
+#include <math.h>
 
 /**
  * Backtracking linesearch for the aproximate tangent direction
  */
-int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
+int linesearch_atd(state_t* state , parameters_t  pars, problem_t prob)
 {
-    printf("linesearch \n");
     double a0 = 1.; //Initial step length
     double a  = a0;
-//  % set intial step length 
-//    a0 = 1.0;
-//    a  = a0;
-//
-//    if v.dkappa < 0
-//        kapmax = -v.kappa/v.dkappa;
-//        a = min(a,kapmax);
-//    end
-//    if v.dtau < 0
-//        taumax = -v.tau/v.dtau;
-//        a = min(a,taumax);
-//    end
-//    % if either kap or tau is blocking, multiply by eta
-//    % so we do not hit boundary:
-//    if a < a0
-//        a = pars.eta*a;
-//    end
-    if(state.dkappa < 0) a = fmin(a,-state.kappa/state.dkappa);
-    if(state.dtau < 0) a = fmin(a,-state.tau/state.dtau);
+
+    // Calculate the largest step before either tau or kappa reach the boundary
+    if(state->dkappa < 0) a = fmin(a,-state->kappa/state->dkappa);
+    if(state->dtau < 0) a = fmin(a,-state->tau/state->dtau);
+    //If with the full step either reaches the boundary make sure that after
+    //the step the new trial tau or kappa is at most pars.eta of the way to the boundary.
     if(a<a0) a = a*pars.eta;
-    printf("C: Initial a: %g\n",a);
 
-//    % couter for number of bisections
-//    nsect = 0;
-//    
-//    %Main linesearch loop
-//    for j = 1:pars.lsmaxit
-
-
-//  allocate work vectors for the trial steps
-    double* xa = (double*)calloc(state.x->n,sizeof(double));
-    double* sa = (double*)calloc(state.x->n,sizeof(double));
-    double* psi  = (double*)calloc(state.x->n,sizeof(double));
-    double* hpsi = (double*)calloc(state.x->n,sizeof(double));
+    //  allocate work vectors for the trial steps
+    double* xa = (double*)calloc(state->x->n,sizeof(double));
+    double* sa = (double*)calloc(state->x->n,sizeof(double));
+    //Allocate work vectors to calculate the centrality
+    double* psi  = (double*)calloc(state->x->n,sizeof(double));
+    double* hpsi = (double*)calloc(state->x->n,sizeof(double));
     double kappaa;
     double taua;
     double dga;
@@ -60,7 +39,8 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
     if(sa == NULL)   return OUT_OF_MEMORY;
     if(psi == NULL)  return OUT_OF_MEMORY;
     if(hpsi == NULL) return OUT_OF_MEMORY;
-
+    
+    //Counter for the number of backtracks
     int nsect = 0;
     int j = 0;
 
@@ -73,186 +53,100 @@ int linesearch_atd(state_t state ,parameters_t  pars, problem_t prob)
 
     for(j=0;j<pars.max_backtrack;j++)
     {
-         dosect = false;
-         printf("Iterate %i,%g\n",j,a);
-//        xa     = v.x     + a * v.dx;
-//        sa     = v.s     + a * v.ds;
-//        taua   = v.tau   + a * v.dtau;
-//        kappaa = v.kappa + a * v.dkappa;
-      cblas_dcopy(state.x->n,state.x->v,1,xa,1);
-      cblas_dcopy(state.s->n,state.s->v,1,sa,1);
-
-      cblas_daxpy(prob.n,a,state.dx->v,1,xa,1);
-      cblas_daxpy(prob.n,a,state.ds->v,1,sa,1);
-      taua      = state.tau + a*state.dtau;
-      kappaa    = state.kappa + a*state.dkappa;
-        
-//        % new duality gap:
-//        dga    = xa'*sa + taua*kappaa;
-//        mua    = dga / (K.nu + 1);
-      dga    = cblas_ddot(state.x->n,xa,1,sa,1) + taua*kappaa;
-      mua    = dga / (prob.nu + 1);  //TODO:Populate prob.nu on init
-      
-   //   //XXX:REMOVE
-   //   if(j==0)
-   //   {
-   //   write_vector_to_csv("first_iter_sa.csv",sa,state.s->n);
-   //   write_vector_to_csv("first_iter_ds.csv",state.ds->v,state.s->n);
-   //   write_vector_to_csv("first_iter_s.csv" ,state.s->v,state.s->n);
-   //   }
-
-    //TODO:
-    //Move the calculation of the nnzH to the initialization 
-    //so that problem.nnzH is populated correctly
-    //Add the calculation of problem.nu 
-    //Add the population of problem m,n;
-    //
-    //Check if x,s are feasible wrt the cones
-    dFeas = dual_feas(prob,sa);
-    pFeas = primal_feas(prob,xa);
-
-//        % evaluate barriers at new point:
-//        % check only feasibility, so want = [-1,-1,-1]:
-//        % Evaluate the primal barrier for f,g,H
-//        FP = BarrFuncP(xa,K,[1,1,1]); 
-//        % Check the dual feasibility
-//        FD = BarrFuncD(sa,K,[1,-1,-1]);
-//        
-//        dosect = false; %True if we must backtrack
-//        %If either the primal is infeasible or 
-//        % the dual is infeasible backtrack
-//        if FP{4} < 0 
-//            dosect  = true;
-//            R.block = 'pf';
-//        elseif FD{4} < 0 
-//            dosect  = true;
-//            R.block = 'df';
-//        else %If the iterate is pirmal and dual feasible evaluate the centrality
-//            psi       = sa + mua*FP{2};
-//            centmeas5 = sqrt(psi'*(FP{3}\psi)); %XXX: Linear solve
-//            centmeas = centmeas5;
-//            
-//            if centmeas > mua*pars.theta
-//                dosect  = true;
-//                R.block = 'ce';
-//            end
-//        end
-
+          dosect = false;
     
-    if(!pFeas)
-    {
-        dosect = true; printf("C: Not primal feasible\n");
-    }
-    else if(!dFeas)
-    {
-        dosect = true; printf("C: Not dual feasible\n");
-    }
-    else
-    {
-        //Evaluate the gradient and hessian at the preset point
-        //eval_grad(prob,xa,psi);
-        //eval_hess(prob,xa,state);
-        ////scale by mu and add s to psi
-        //cblas_dscal(prob.n,mua,xa,1);
-        //cblas_daxpy(prob.n,1.0,sa,1,psi,1);
-        //  
-        ////Solve the linear system H(hpsi)=psi
-        //int ret = solve_linear_system(hpsi,state.H.I,state.H.J,state.H.V,state.H.nnz,psi,state.H.n);
-        //if(ret!=0){printf("Error solving linear system ret:%i, n:%i, nnz:%i",ret,state.H.n, state.H.nnz); return INTERNAL_ERROR; }//XXX:We should check for numerical error and not crash 
-      
-        //centmeas = sqrt(cblas_ddot(prob.n,psi,1,hpsi,1)); 
-        //
-        centmeas = eval_cent_meas(prob,xa,sa,state,mua,psi,hpsi);
-        //Decide if we need to backtrack
-        if(centmeas > mua*pars.theta)
+          //Take an a sized step in x, tau and s, kappa, and store in xa, sa, taua, kappaa
+          cblas_dcopy(state->x->n,state->x->v,1,xa,1);
+          cblas_dcopy(state->s->n,state->s->v,1,sa,1);
+          cblas_daxpy(prob.n,a,state->dx->v,1,xa,1);
+          cblas_daxpy(prob.n,a,state->ds->v,1,sa,1);
+          taua      = state->tau + a*state->dtau;
+          kappaa    = state->kappa + a*state->dkappa;
+            
+          //Calculate the duality gap at the new trial point
+          dga    = cblas_ddot(state->x->n,xa,1,sa,1) + taua*kappaa;
+          mua    = dga / (prob.nu + 1); 
+         
+          //Check if x,s are feasible wrt the cones
+          dFeas = dual_feas(prob,sa);
+          pFeas = primal_feas(prob,xa);
+    
+         //If not primal or dual feasible backtrack
+        if(!pFeas)
         {
-            dosect = true;
+            dosect = true; 
+            //printf("C: Not primal feasible\n");
         }
-        
-        printf("Evaluating dist: %g, %g, %i:\n",centmeas,mua*pars.theta,dosect);
-//        
-//        if dosect
-//            a     = a*pars.lscaff; 
-//            nsect = nsect + 1;
-//        else
-//            break;
-//        end
-//        
-//    end %end of main linesearch loop
-//
-
-    }
-
-    if(dosect)
+        else if(!dFeas)
+        {
+            dosect = true; 
+            //printf("C: Not dual feasible\n");
+        }
+        else //If both primal and dual feasible measure the centrality
+        {
+            centmeas = eval_cent_meas(prob,xa,sa,*state,mua,psi,hpsi);
+            //Decide if we need to backtrack
+            if(centmeas > mua*pars.theta)
+            {
+                dosect = true;
+            }
+            
+            //printf("Evaluating dist: %g, %g, %i:\n",centmeas,mua*pars.theta,dosect);
+        }
+        //If we must backtrack do so
+        if(dosect)
+        {
+            a = a*pars.lscaff;
+            state->nbacktrack += 1; 
+        }
+        else
+        {
+            break;
+        }
+         
+    }  
+ 
+    //Check if the backtrack reached the maximum number of iterates
+    if(j==pars.max_backtrack)
     {
-        a = a*pars.lscaff;
-        state.nbacktrack += 1; 
+       //If the backtrack fails do not update the vectors and release 
+       //the local work vectors, and test vectors 
+       free(xa);
+       free(sa);
+       free(psi);
+       free(hpsi);
+       state->a = a;   
+       return BACKTRACK_FAIL; 
     }
     else
     {
-        break;
+        //If the backtrack succedded accept the iterate
+        //store it in state and take the step in y
+
+        //First release the old vectors
+        double* xt = state->x->v;
+        double* st = state->s->v;
+        
+        state->x->v    = xa;
+        state->s->v    = sa;
+        state->tau    = taua;
+        state->kappa  = kappaa;
+       
+        //Take the step in y
+        cblas_daxpy(prob.m,a,state->dy->v,1,state->y->v,1);
+        state->a = a;   
+
+        //Free the old vectors
+        free(xt);
+        free(st);
+        free(psi);
+        free(hpsi);
+
+        return OK;
     }
-     
 
-}
-
-    //Free the work vectors 
-    free(xa);
-    free(sa);
-    free(psi);
-    free(hpsi);
-
-//    v.a = a;
-//    
-//    % Check if the linesearch did not find 
-//    % a feasible point in the maximum number of iterations
-//    if j == pars.lsmaxit
-//        xa = v.x + a * v.dx;
-//        FP = BarrFuncP(xa,K,[1,1,-1]);
-//        if FP{4} < 0
-//
-//            error(['linesearch: failed to find feasible point.',...
-//                ' pars.lscaff too close to 1 ???']);
-//        end
-//    end
-//
-//    %Take the step 
-//
-//    % store the previous step
-//    v.xprev     = v.x;
-//    v.gprev     = v.F{2};
-//    v.tauprev   = v.tau;
-//    v.kappaprev = v.kappa;
-//    
-//    % take step:
-//    v.x     = xa;
-//    v.tau   = taua;
-//    v.y     = v.y     + v.a * v.dy;
-//    v.s     = sa;
-//    v.kappa = kappaa;
-//    
-//    % update other quantities:
-//    v.dgap  = v.x'*v.s + v.tau*v.kappa;
-//    v.mu    = v.dgap / (K.nu + 1);
-//    
-//    % "feas" measure, see Sturm:
-//    v.feas  = v.dtauaff/v.tauprev - v.dkappaaff/v.kappaprev;
-//
-//    %Update the residuals
-//    bty  = pars.b'*v.y;
-//    ctx  = pars.c'*v.x;    
-//    v.rA = abs( ctx - bty )/( v.tau + abs(bty) );
-//    
-//    v.rP = (pars.A*v.x - pars.b*v.tau);
-//    v.rD = (-pars.A'*v.y - v.s + pars.c*v.tau);
-//    v.rG = (-ctx + bty - v.kappa);
-//    
-//    v.rPrel = norm( v.rP, 'inf')/pars.relstopP;
-//    v.rDrel = norm( v.rD, 'inf')/pars.relstopD;
-//    v.rGrel = norm( v.rG, 'inf')/pars.relstopG;
-//    v.rArel = v.rA; 
-    state.a = a;   
-    return OK;
+    //state->a = a;   
+    //return OK;
 }
 
 

@@ -221,7 +221,7 @@ int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, doubl
     state.H.nnz = nnzH;
 
     //Call the linesearch
-    linesearch_atd(state,params,prob);
+    linesearch_atd(&state,params,prob);
     (*nbacktrack) = state.nbacktrack;
     (*a)          = state.a;
     
