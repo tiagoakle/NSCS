@@ -1,5 +1,5 @@
 #include "linear_solvers.h"
-#include "nscs_sp.h"
+#include "spmat.h"
 #include "nscs.h"
 #include "matlab_include/matlab_lib.h"
 #include "eval_cent_meas.h"
@@ -55,72 +55,32 @@ int solve_kkt_system_no_structs(int m, int n,
    A.J   = Aj;
    A.V   = Av;
 
-   vec   vb;
-   vb.n   = m;
-   vb.v   = b;
-
-   vec   vc;
-   vc.n   = n;
-   vc.v   = c;
-
-   vec   vr1;
-   vr1.n  = m;
-   vr1.v  = r1;
-
-   vec   vr2;
-   vr2.n  = n;
-   vr2.v  = r2;
-
-   vec   vr4;
-   vr4.n  = n;
-   vr4.v  = r4;
-   
-   //Now build the vectors where the result will be stored
-   //we assume that dy,dx,ds are already allocated
-   vec   vdy;
-   vdy.n  = m;
-   vdy.v  = dy;
-
-   vec   vdx;
-   vdx.n  = n;
-   vdx.v  = dx;
-
-   vec    vds;
-   vds.n  = n;
-   vds.v  = ds;
 
 double scalars[] = {m,n,tau,kappa};
-//Debug stuff
-//write_vector_to_csv("b_call.csv", vb.v, vb.n);
-//write_vector_to_csv("c_call.csv", vc.v, vc.n);
-//write_vector_to_csv("r1_call.csv", vr1.v, vr1.n);
-//write_vector_to_csv("r2_call.csv", vr2.v, vr2.n);
-//write_vector_to_csv("r4_call.csv", vr4.v, vr4.n);
-//write_vector_to_csv("doubles_call.csv",scalars,4);
 
 //Now execute the call
 int ret = solve_kkt_system(mu,\
                      H,\
                      A,\
-                     vb,\
-                     vc,\
+                     b,\
+                     c,\
                      tau,\
                      kappa,\
                      delta,\
                      gamma,\
-                     vr1,\
-                     vr2,\
+                     r1,\
+                     r2,\
                      r3,\
-                     vr4,\
+                     r4,\
                      r5,\
-                     vdy,\
-                     vdx,\
+                     dy,\
+                     dx,\
                      dt,\
-                     vds,\
+                     ds,\
                      dk );
 
 //Debug stuff
-write_vector_to_csv("dx_call.csv", vdx.v, vdx.n);
+write_vector_to_csv("dx_call.csv", dx, n);
 
 return ret;
 
@@ -148,59 +108,35 @@ int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, doubl
 {
 
     //Construct prob
+    spmat A;
+    A.n = n;
+    A.m = m;
+
     problem_t prob;
+    prob.A       = A;
     prob.tK      = tK;
     prob.nK      = nK;
     prob.k_count = k_count;
-    prob.m       = m;
-    prob.n       = n;
     prob.delta   = 1.e-10;
     prob.gamma   = 1.e-10;
-    prob.free    = 0;
     prob.nu      = nu;
     prob.nnzH    = nnzH;
 
     //Construct the state
     state_t state;
-    vec vy;
-    state.y = &vy;
-    state.y->v = y;
-    state.y->n = m;
-
-    vec vx;
-    state.x = &vx;
-    state.x->v = x;
-    state.x->n = n;
-    
-    vec vs;
-    state.s = &vs;
-    state.s->v = s;
-    state.s->n = n;
-    
+    state.y = y;
+    state.x = x; 
+    state.s = s;
     state.tau = tau;
     state.kappa = kappa;
 
-
-    vec vdy;
-    state.dy = &vdy;
-    state.dy->v = dy;
-    state.dy->n = m;
-
-    vec vdx;
-    state.dx = &vdx;
-    state.dx->v = dx;
-    state.dx->n = n;
-    
-    vec vds;
-    state.ds = &vds;
-    state.ds->v = ds;
-    state.ds->n = n;
-    
+    state.dy = dy;
+    state.dx = dx;
+    state.ds = ds;
     state.dtau = dtau;
     state.dkappa = dkappa;
     
     state.mu     = NAN; //In case we access this
-    state.eta    = NAN;
     state.nbacktrack = 0;
     
     //Build the params structure
@@ -224,6 +160,94 @@ int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, doubl
     linesearch_atd(&state,params,prob);
     (*nbacktrack) = state.nbacktrack;
     (*a)          = state.a;
+    
+    free(state.H.I);
+    free(state.H.J);
+    free(state.H.V);
+
+}
+
+/**
+ * Wrapper to call from matlab
+ */
+int linesearch_cent_no_structs( int m, int n, double*x, double*y, double*s, double tau, double kappa, double* dx,\
+                                                                                                    double* dy,\
+                                                                                                    double* ds,\
+                                                                                                    double  dtau,\
+                                                                                                    double  dkappa,\
+                                                                                                    double  lsccent,\
+                                                                                                    double  eta,\
+                                                                                                    double  theta,\
+                                                                                                    double  mu,\
+                                                                                                    int max_backtrack,\
+                                                                                                    int k_count,\
+                                                                                                    int* nK,\
+                                                                                                    int* tK,\
+                                                                                                    double nu,\
+                                                                                                    csi nnzH,\
+                                                                                                    double* a,\
+                                                                                                    int* nbacktrack,
+                                                                                                    double* objvalb)
+{
+
+    //Construct prob
+    spmat A;
+    A.n = n;
+    A.m = m;
+
+    //Construct prob
+    problem_t prob;
+    prob.A       = A;
+    prob.tK      = tK;
+    prob.nK      = nK;
+    prob.k_count = k_count;
+    prob.delta   = 1.e-10;
+    prob.gamma   = 1.e-10;
+    prob.nu      = nu;
+    prob.nnzH    = nnzH;
+
+    //Construct the state
+    state_t state;
+    state.y = y;
+    state.x = x; 
+    state.s = s;
+    state.tau = tau;
+    state.kappa = kappa;
+    state.mu    = mu;
+    state.min_centmeas = *objvalb; //Before the call assign the value to the calling param value
+
+    state.dy = dy;
+    state.dx = dx;
+    state.ds = ds;
+    state.dtau = dtau;
+    state.dkappa = dkappa;
+    
+    state.mu     = NAN; //In case we access this
+    state.nbacktrack = 0;
+    
+    //Build the params structure
+
+    parameters_t params;
+    params.print = true;
+    params.max_center_iter = NAN;
+    params.eta   = eta;
+    params.theta = theta;
+    params.lsccent = lsccent;
+    params.max_backtrack = max_backtrack;
+
+    //Allocate space for the hessian!!!
+    state.H.I   = (int*)calloc(nnzH,sizeof(int));
+    state.H.J   = (int*)calloc(nnzH,sizeof(int));
+    state.H.V   = (double*)calloc(nnzH,sizeof(double));
+    state.H.n   = n;
+    state.H.nnz = nnzH;
+
+    //Call the linesearch
+    linesearch_centering(&state,params,prob);
+    //Return the results
+    (*nbacktrack) = state.nbacktrack;
+    (*a)          = state.a;
+    (*objvalb)     = state.min_centmeas;
     
     free(state.H.I);
     free(state.H.J);
@@ -285,12 +309,16 @@ void dual_feas_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* 
 
 void eval_cent_meas_no_structs(csi k_count, csi* nK, int* tK, double delta, double* x, double* s, csi n, csi nnzH, double mua, double* psi, double * hpsi, double* centmeas)
 {
+   //Construct prob
+   spmat A;
+   A.n = n;
+
    problem_t prob;
+   prob.A       = A;
    prob.k_count = k_count;
    prob.tK = tK;
    prob.nK = nK;
    prob.delta = 0.0;
-   prob.n    = n;
     //Allocate space for the hessian
    state_t state; 
    state.H.I   = (csi*)calloc(nnzH,sizeof(csi));

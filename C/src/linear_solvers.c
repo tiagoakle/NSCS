@@ -1,10 +1,9 @@
+#include <stdio.h>
+#include <OpenBlas/cblas.h>
 #include "linear_solvers.h"
 #include "umfpack.h"
-#include <stdio.h>
-#include "nscs_sp.h"
-#include <OpenBlas/cblas.h>
+#include "spmat.h"
 #include "smatvec.h"
-#include "test_util.h"
 
 
 //This function builds the compressed column row structure and 
@@ -305,21 +304,21 @@ int free_factorization(void* Numeric, int* Ai, int* Ap, double* Av)
 int solve_kkt_system(double mu,\
                      spmat H,\
                      spmat A,\
-                     vec b,\
-                     vec c,\
+                     double* b,\
+                     double* c,\
                      double tau,\
                      double kappa,\
                      double delta,\
                      double gamma,\
-                     vec r1,\
-                     vec r2,\
+                     double* r1,\
+                     double* r2,\
                      double r3,\
-                     vec r4,\
+                     double* r4,\
                      double r5,\
-                     vec dy,\
-                     vec dx,\
+                     double* dy,\
+                     double* dx,\
                      double* dt,\
-                     vec ds,\
+                     double* ds,\
                      double* dk )
 { 
    // Solves  [    A -b      ] dy   r1
@@ -356,15 +355,13 @@ int solve_kkt_system(double mu,\
     //void cblas_daxpy(const int N, const double alpha, const double *X, const int incX, double *Y, const int incY);
     
     //Allocate a working vector
-    vec r7;
-    r7.n = r2.n;
-    r7.v = (double*)calloc(r7.n,sizeof(double));
+    double* r7;
+    r7 = (double*)calloc(H.n,sizeof(double));
 
-
-    cblas_dcopy(r2.n,r2.v,1,r7.v,1);
+    cblas_dcopy(H.n,r2,1,r7,1);
     //Add r2 and r4 in r7
-    cblas_daxpy(r2.n,1.,r4.v,1,r7.v,1);
-    cblas_dscal(r7.n,-1,r7.v,1);  //#TODO: free r2
+    cblas_daxpy(H.n,1.,r4,1,r7,1);
+    cblas_dscal(H.n,-1,r7,1);  //#TODO: free r2
     //r7 = -(r2+r4);
     
     //r8 = r3+r6;
@@ -393,9 +390,9 @@ int solve_kkt_system(double mu,\
     double* rhs  = (double*)calloc(A.n+A.m,sizeof(double));
     int i = 0;
     for(i=0;i<A.m;i++)
-        rhs[i] = b.v[i];
+        rhs[i] = b[i];
     for(i=0;i<A.n;i++)
-        rhs[i+A.m] = -c.v[i];
+        rhs[i+A.m] = -c[i];
 
     //Allocate space for the coo matrix
     csi* Ki=NULL;
@@ -436,15 +433,15 @@ int solve_kkt_system(double mu,\
 
     //Now calculate 
     // h_1b   = tm_1'*[-b;-c];
-    double h_1b =  cblas_ddot(A.m,tm_1    ,1  ,b.v,1); 
-    h_1b        += cblas_ddot(A.n,tm_1+A.m,1  ,c.v,1);
+    double h_1b =  cblas_ddot(A.m,tm_1    ,1  ,b,1); 
+    h_1b        += cblas_ddot(A.n,tm_1+A.m,1  ,c,1);
     h_1b        = -h_1b;
     
     // r_7b   = tm_1'*[r1;r7];
-    double r_7b =  cblas_ddot(A.m,tm_1,1,r1.v,1); 
-    r_7b        += cblas_ddot(A.n,tm_1+A.m,1,r7.v,1);
+    double r_7b =  cblas_ddot(A.m,tm_1,1,r1,1); 
+    r_7b        += cblas_ddot(A.n,tm_1+A.m,1,r7,1);
 
-    free(r7.v);
+    free(r7);
  
     // r9  = r8 - r_7b;
     // h_2 = h-h_1b; 
@@ -461,12 +458,12 @@ int solve_kkt_system(double mu,\
     
     //Construct the rhs
     //put [r1;r7] into rhs
-    cblas_dcopy(A.m,r1.v,1,rhs,1);
-    cblas_dcopy(A.n,r7.v,1,rhs+A.m,1);
+    cblas_dcopy(A.m,r1,1,rhs,1);
+    cblas_dcopy(A.n,r7,1,rhs+A.m,1);
 
     //put r1+dt*b into rhs, and then r7+dt*c
-    cblas_daxpy(A.m,*dt,b.v,1,rhs,1);
-    cblas_daxpy(A.n,*dt,c.v,1,rhs+A.m,1);
+    cblas_daxpy(A.m,*dt,b,1,rhs,1);
+    cblas_daxpy(A.n,*dt,c,1,rhs+A.m,1);
 
     //Call the solver
     res = solve_factored_system(Numeric,Ki,Kp,Kv,rhs,tm_1);
@@ -489,8 +486,8 @@ int solve_kkt_system(double mu,\
     // dy   = tm_1(1:m);
     // dx   = tm_1(m+1:m+n);
 
-    cblas_dcopy(A.m,tm_1,1,dy.v,1);
-    cblas_dcopy(A.n,tm_1+A.m,1,dx.v,1);
+    cblas_dcopy(A.m,tm_1,1,dy,1);
+    cblas_dcopy(A.n,tm_1+A.m,1,dx,1);
 
     //We need the csr form of H for the product
     csi* Hi =(csi*)calloc(H.nnz,sizeof(csi));
@@ -514,11 +511,11 @@ int solve_kkt_system(double mu,\
     for(i=0;i<H.m;i++)
         tm_1[i] = 0;
 
-    dspmv(H.m,H.n,-mu,Hp,Hi,Hv,tm_1,dx.v); 
+    dspmv(H.m,H.n,-mu,Hp,Hi,Hv,tm_1,dx); 
     //void dspmv(int m, int n, double alpha, int* pA, int * iA, double* vA, double* y, double* x)
-    cblas_daxpy(H.n,1.,r4.v,1,tm_1,1);
+    cblas_daxpy(H.n,1.,r4,1,tm_1,1);
     //Now ds is in tm_1;
-    cblas_dcopy(H.m,tm_1,1,ds.v,1);
+    cblas_dcopy(H.m,tm_1,1,ds,1);
     *dk     = r6-h*(*dt);
     
     //Free the csr form of H
@@ -539,9 +536,4 @@ int solve_kkt_system(double mu,\
     return 0;
 }
 
-//Copies In[0] to In[n-1] to Out[1] to Out[n-1]
-//This is usefull to debug MATLAB's bugs in callib
-void dummy_copy(double* Out, double* In, int n)
-{
-    cblas_dcopy(n,In,1,Out,1);
-}
+

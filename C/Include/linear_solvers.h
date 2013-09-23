@@ -1,4 +1,4 @@
-#include "nscs_sp.h"
+#include "spmat.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,21 +70,21 @@ int solve_kkt_system_no_structs(int m, int n,
 int solve_kkt_system(double mu,\
                      spmat H,\
                      spmat A,\
-                     vec b,\
-                     vec c,\
+                     double* b,\
+                     double* c,\
                      double tau,\
                      double kappa,\
                      double delta,\
                      double gamma,\
-                     vec r1,\
-                     vec r2,\
+                     double* r1,\
+                     double* r2,\
                      double r3,\
-                     vec r4,\
+                     double* r4,\
                      double r5,\
-                     vec dy,\
-                     vec dx,\
+                     double* dy,\
+                     double* dx,\
                      double* dt,\
-                     vec ds,\
+                     double* ds,\
                      double* dk );
 void dummy_copy(double* Out, double* In, int n);
 

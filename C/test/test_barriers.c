@@ -363,8 +363,10 @@ START_TEST(test_gradient_values_two_cone)
     tK[1] = 3;
 
     //Build the problem description
+    spmat A; 
+    A.n   = n;
     problem_t problem;
-    problem.n = n;
+    problem.A = A;
     problem.k_count = k_count;
     problem.nK = nK;
     problem.tK = tK;
@@ -412,8 +414,10 @@ START_TEST(test_hessian_assemble)
     tK[0] = 0;
     for(i=1;i<k_count;i++){nK[i] = 3; tK[i]=3;}
     //Build the problem description
+    spmat A;
+    A.n     = n;
     problem_t problem;
-    problem.n = n;
+    problem.A = A;
     problem.k_count = k_count;
     problem.nK = nK;
     problem.tK = tK;
@@ -440,11 +444,7 @@ START_TEST(test_hessian_assemble)
     //Choose feasible points for the exponential cone
     for(i=2;i<n;i=i+3){ x[i] = rand()/(double)RAND_MAX - 0.5 ; x[i+2] = rand()/(double)RAND_MAX ; x[i+1] = x[i+2]*exp(x[i]/x[i+2])+10;}
     
-    vec vx; 
-    vx.v = x;
-    vx.n = n;
-    state.x = &vx;
-   
+    state.x = x; 
    //Evaluate the hessian    
     eval_hess(problem,x,state);
    //Compress to csr
@@ -491,9 +491,12 @@ START_TEST(test_general_nnz)
     nK[0] = 10;
     tK[0] = 0;
     for(i=1;i<k_count;i++){nK[i] = 3; tK[i]=3;}
+
     //Build the problem description
+    spmat A;
+    A.n = n;
     problem_t problem;
-    problem.n = n;
+    problem.A = A;
     problem.k_count = k_count;
     problem.nK = nK;
     problem.tK = tK;
@@ -524,8 +527,10 @@ START_TEST(test_values_two_cone_hessian)
     tK[1]=3;
 
     //Build the problem description
+    spmat A;
+    A.n = n;
     problem_t problem;
-    problem.n = n;
+    problem.A = A;
     problem.k_count = k_count;
     problem.nK = nK;
     problem.tK = tK;
@@ -597,8 +602,10 @@ START_TEST(test_general_call_hessian_gradient_positive_orthant)
     for(i=0;i<10;i++) x[i] = 1./((double)i+1);
 
     //Build the problem description
+    spmat A;
+    A.n = n;
     problem_t problem;
-    problem.n = n;
+    problem.A = A;
     problem.k_count = k_count;
     problem.nK = nK;
     problem.tK = tK;
@@ -665,8 +672,10 @@ START_TEST(test_general_hessian_numerical)
     for(i=nK[0];i<n;i=i+3){ x[i] = rand()/(double)RAND_MAX - 0.5 ; x[i+2] = rand()/(double)RAND_MAX ; x[i+1] = x[i+2]*exp(x[i]/x[i+2])+1;}
   
     //Build the problem description
+    spmat A;
+    A.n = n;
     problem_t problem;
-    problem.n = n;
+    problem.A = A;
     problem.k_count = k_count;
     problem.nK = nK;
     problem.tK = tK;

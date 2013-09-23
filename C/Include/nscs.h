@@ -8,23 +8,23 @@
 #ifndef H_NSCS
 #define H_NSCS
 #include "common.h"
-#include "nscs_sp.h"
+#include "spmat.h"
 #include "math.h"
 //State structure
 typedef struct
 {
 
    //Present iterate 
-   vec*   y;
-   vec*   x;
+   double*   y;
+   double*   x;
    double tau;
-   vec*   s;
+   double*   s;
    double kappa;
 
    //Present residuals
-   vec*  p_res; //Primal residual Ax-tb=p_res TODO:Check sign
-   vec*  d_res; //Dual residual -A'y+s-tc TODO:Check sign
-   vec*  c_res; //Complementarity res TODO:Define
+   double*  p_res; //Primal residual Ax-tb=p_res TODO:Check sign
+   double*  d_res; //Dual residual -A'y+s-tc TODO:Check sign
+   double*  c_res; //Complementarity res TODO:Define
    double g_res; //b'y-c'x-k = g_res TODO:Check sign
    double c_cent_res; // t/k - mu = c_rent_res TODO: Check this definition
 
@@ -34,10 +34,10 @@ typedef struct
    double n_c_res;
 
    //Present search direction
-   vec*  dy;
-   vec*  dx;
+   double*  dy;
+   double*  dx;
    double dtau;
-   vec*  ds;
+   double*  ds;
    double dkappa;
 
    //Present step length
@@ -48,30 +48,29 @@ typedef struct
 
    //Present value of the complementarity
    double mu;
-
-   //Present value of the centrality
-   double eta;
+ 
+   //Minimum centrality value found
+   double min_centmeas;
 
    //Counters
    int nbacktrack;
 
 } state_t;
 
-//Problem definition
+//Structure to hold the problem definition
 typedef struct
 {
-   //Problem definition
+   //Constraint matrix
    spmat A;
-   vec   b;
-   vec   c;
+   double*   b;
+   double*   c;
+
    int   *tK;
    csi   *nK;
    int   k_count; //Number of cones
-   int   m;
-   int   n;
    double  delta; //Primal regularization
    double  gamma; //Dual regularization
-   int   free;
+   
    double nu;     //Complexity
    csi    nnzH;   //Number of non zeros in the hessian
 
@@ -89,9 +88,9 @@ enum status_e
 //Result structure definition
 typedef struct
 {
-  vec x;
-  vec y;
-  vec s;
+  double* x;
+  double* y;
+  double* s;
   double tau;
   double kappa;
 
@@ -106,7 +105,8 @@ typedef struct
     int max_iter;
     int max_center_iter;
     double theta; //Backtracking limit
-    double lscaff; //Backtracking constant
+    double lscaff; //Affine scaling backtracking linesearch constant
+    double lsccent; //Centering backtracking linesearch constant
     double eta;    //Closeness to boundary of first iterate
     int    max_backtrack;
 
@@ -122,7 +122,6 @@ int  solve_approximate_tangent_direction(state_t state);
 bool check_centering_condition(state_t state, parameters_t* pars);
 int calculate_centering_direction(state_t state, parameters_t* pars);
 int centering_linesearch(state_t state, parameters_t* pars);
-int primal_lifting(state_t state);
 void print_and_log(state_t state ,int m_iter, int c_iter,parameters_t* pars);
 int check_stopping_criteria(state_t state,parameters_t* pars);
 void print_final(state_t state);

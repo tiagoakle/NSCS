@@ -6,6 +6,29 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * Wrapper to call from matlab
+ */
+int linesearch_cent_no_structs( int m, int n, double*x, double*y, double*s, double tau, double kappa, double* dx,\
+                                                                                                    double* dy,\
+                                                                                                    double* ds,\
+                                                                                                    double  dtau,\
+                                                                                                    double  dkappa,\
+                                                                                                    double  lsccent,\
+                                                                                                    double  eta,\
+                                                                                                    double  theta,\
+                                                                                                    double  mu,\
+                                                                                                    int max_backtrack,\
+                                                                                                    int k_count,\
+                                                                                                    int* nK,\
+                                                                                                    int* tK,\
+                                                                                                    double nu,\
+                                                                                                    csi nnzH,\
+                                                                                                    double* a,\
+                                                                                                    int* nbacktrack,
+                                                                                                    double* objvalb);
+
 int linesearch_atd_no_structs( int m, int n, double* x, double* y, double* s, double tau, double kappa, double* dx,\
                                                                                                     double* dy,\
                                                                                                     double* ds,\
@@ -68,27 +91,6 @@ int solve_kkt_system_no_structs(int m, int n,\
 
 void dummy_copy(double* Out, double* In, int n);
 //Builds and solves the 5x5 system
-//int solve_kkt_system(double mu,\
-//                     spmat H,\
-//                     spmat A,\
-//                     vec b,\
-//                     vec c,\
-//                     double tau,\
-//                     double kappa,\
-//                     double delta,\
-//                     double gamma,\
-//                     vec r1,\
-//                     vec r2,\
-//                     double r3,\
-//                     vec r4,\
-//                     double r5,\
-//                     vec dy,\
-//                     vec dx,\
-//                     double* dt,\
-//                     vec ds,\
-//                     double* dk);
-//
-
 void eval_hess_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* HI, int* HJ, double* HV);
 void primal_feas_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* feas);
 void dual_feas_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* feas);

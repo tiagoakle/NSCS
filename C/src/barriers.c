@@ -1,5 +1,6 @@
 #include "barriers.h"
 #include "common.h"
+#include <stdio.h>
 /**
  * Returns true if x is primal feasible.
  * @param prob the problem definition strucutre
@@ -39,8 +40,7 @@ bool dual_feas(problem_t prob, double*x )
         var_ix += prob.nK[i];
         if(!feas) break;
     }
-
-    printf("Cone %i type %i size %i, %g, %g, %g \n",i,prob.tK[i],prob.nK[i],x[var_ix],x[var_ix],x[var_ix]);
+    
     return feas;
 }
 
@@ -65,6 +65,25 @@ double barrier_complexity(problem_t prob)
 }
 
 /**
+ * Evaluates the value of the primal barrier at x
+ * @param prob the problem definition
+ * @param x the point at which to evaluate
+ * @return the value of the barrier
+ */
+double eval_barrier(problem_t prob, double* x)
+{
+    double barrier_val = 0.;
+    csi i = 0;
+    csi var_ix = 0;
+    for(i = 0;i<prob.k_count;i++)
+    { 
+        barrier_val += cone_barrier_val(prob.tK[i],x+var_ix,prob.nK[i]);
+        var_ix += prob.nK[i];
+    }
+    return barrier_val;
+}
+
+/**
  * Evaluates the gradient of the barrier at x
  * @param prob problem definition
  * @param x    present primal point
@@ -78,7 +97,7 @@ void eval_grad(problem_t prob, double* x, double* grad)
     //Iterate over all the cones and evaluate the respective gradients
     for(i = 0; i < prob.k_count; i++)
     {
-        cone_barrier_grad(prob.tK[i],grad+val_ix,x,prob.nK[i]);
+        cone_barrier_grad(prob.tK[i],grad+val_ix,x+val_ix,prob.nK[i]);
         val_ix += prob.nK[i];
     }
 }
@@ -91,10 +110,12 @@ void eval_grad(problem_t prob, double* x, double* grad)
  */
 void eval_hess(problem_t prob, double* x, state_t state)
 {
-    double nu = 0.;
-    csi val_ix = 0;
+    //index of the first variable in this cone
+    csi var_ix = 0;
+    //non zeros calculated already
     csi offset = 0;
-    csi i = 0;
+    csi i = 0; //iterator
+    csi row_shift = 0; //first index of this hessian sub_block in the hessian
     //Iterate over all the cones and evaluate the respective gradients
     for(i = 0; i < prob.k_count; i++)
     {
@@ -104,10 +125,12 @@ void eval_hess(problem_t prob, double* x, state_t state)
                              state.H.I+offset,\
                              state.H.J+offset,\
                              state.H.V+offset,\
-                             x+val_ix,\
-                             prob.tK[i],\
+                             row_shift,\
+                             x+var_ix,\
+                             prob.nK[i],\
                              prob.delta);
-        val_ix += prob.nK[i];
+        var_ix += prob.nK[i];
+        row_shift = var_ix;
     }
 }
 
@@ -139,7 +162,7 @@ csi cone_nnz(int type, csi n)
         case 1:
         case 2:
         case 3:
-            return exp_nnz(n);
+            return exp_nnz();
             break;
         case 4:
         break;
@@ -164,7 +187,7 @@ int cone_barrier_complexity(int type, csi n)
         case 1:
         case 2:
         case 3:
-            return exp_complexity(n);
+            return exp_complexity();
             break;
         case 4:
         break;
@@ -210,11 +233,12 @@ bool cone_primal_feas(int type, double* x, csi n)
     {
         case 0:
             return pos_orthant_feas( x, n); 
-        break;
+            break;
         case 1:
         case 2:
         case 3:
             return exp_primal_feas(x);
+            break;
         case 4:
         break;
     }
@@ -280,22 +304,23 @@ void cone_barrier_grad(int type, double*g, double*x, csi n)
  * @param HI the vector of row indices of the non zeros
  * @param HJ the vector of col indices of the non zeros
  * @param HV the vector of non zeros
+ * @param row_shift constant to add to each entry in HI and HJ
  * @param x point where the gradient is evaluated
  * @param n the number of variables in the cone
  * @param delta regularization
  * @return the number of non zeros
  */
-csi cone_barrier_hessian(int type, int* HI, int* HJ, double* HV, double*x, csi n, double delta)
+csi cone_barrier_hessian(int type, int* HI, int* HJ, double* HV,csi row_shift, double*x, csi n, double delta)
 {
     switch(type)
     {
         case 0:
-            return  pos_orthant_hessian(HI,HJ,HV,x,n,delta);
+            return  pos_orthant_hessian(HI,HJ,HV,row_shift,x,n,delta);
             break;
         case 1:
         case 2:
         case 3:
-            return exp_hessian(HI,HJ,HV,x,delta);
+            return exp_hessian(HI,HJ,HV,row_shift,x,delta);
             break;
         case 4:
         break;
@@ -351,18 +376,18 @@ void pos_orthant_grad(double* grad, double *x, csi n)
     int i = 0;
     for(i=0;i<n;i++)
     {
-        grad[i] += -1./x[i];
+        grad[i] = -1./x[i];
     }
 
 }
 //Evaluates the hessian of the positive orthant
-csi pos_orthant_hessian(int* HI, int* HJ, double* HV, double*x, csi n, double delta)
+csi pos_orthant_hessian(int* HI, int* HJ, double* HV, csi row_shift, double*x, csi n, double delta)
 { 
     csi i = 0;
     for(i=0;i<n;i++)
     {
-        HI[i] = i;
-        HJ[i] = i;
+        HI[i] = i+row_shift;
+        HJ[i] = i+row_shift;
         HV[i] = 1./x[i]*1./x[i] + delta; 
     }
 
@@ -399,18 +424,27 @@ double exp_val(double* x)
 bool exp_primal_feas(double* x)
 {    
     bool feas = true;
-    feas = (x[0]/x[2]<=log(x[1]/x[2]))&&x[1]>0&&x[2]>0;
+    double logx2 = log(x[1]);
+    double logx3 = log(x[2]);
+    double tmp1  = logx2-logx3;
+    double psi   = x[2]*tmp1 - x[0];
+    // Feasibility:
+    if ((psi < 0) || (x[1]<0) || (x[2]<0))
+        feas = false;
+        
     return feas;
 }
 
 //Returns true if x is feasible in the positive orthant
 bool exp_dual_feas(double* x)
 {   
-    double u,v,w;
-    u = x[0];
-    v = x[1];
-    w = x[2];
-    return (u<0)&&(-u*exp(v/u)<exp(1)*w);
+   
+    double dual[3];
+    dual[0] = -x[2];
+    dual[1] = exp(1)*x[1];
+    dual[2] = -x[0];
+    //return (u<0)&&(-u*exp(v/u-1)<w); //This is Boyds exam criteria
+    return exp_primal_feas(dual); //This is Skajaas criteria
 }
 
 //Evaluates the gradient of the positive orthant
@@ -436,7 +470,7 @@ void exp_grad(double* grad, double *x)
 }
 
 //Evaluates the hessian of the positive orthant
-csi exp_hessian(int* HI, int* HJ, double* HV, double*x, double delta)
+csi exp_hessian(int* HI, int* HJ, double* HV,csi row_shift, double*x, double delta)
 { 
     double  x1    = x[0];
     double  x2    = x[1];
@@ -473,25 +507,25 @@ csi exp_hessian(int* HI, int* HJ, double* HV, double*x, double delta)
     HV[7] = el32;
     HV[8] = el33+delta;
     
-    HI[0]  = 0;
-    HI[1]  = 1;
-    HI[2]  = 2;
-    HI[3]  = 0;
-    HI[4]  = 1;
-    HI[5]  = 2;
-    HI[6]  = 0;
-    HI[7]  = 1;
-    HI[8]  = 2;
+    HI[0]  = 0+row_shift;
+    HI[1]  = 1+row_shift;
+    HI[2]  = 2+row_shift;
+    HI[3]  = 0+row_shift;
+    HI[4]  = 1+row_shift;
+    HI[5]  = 2+row_shift;
+    HI[6]  = 0+row_shift;
+    HI[7]  = 1+row_shift;
+    HI[8]  = 2+row_shift;
 
-    HJ[0]  = 0;
-    HJ[1]  = 0;
-    HJ[2]  = 0;
-    HJ[3]  = 1;
-    HJ[4]  = 1;
-    HJ[5]  = 1;
-    HJ[6]  = 2;
-    HJ[7]  = 2;
-    HJ[8]  = 2;
+    HJ[0]  = 0+row_shift;
+    HJ[1]  = 0+row_shift;
+    HJ[2]  = 0+row_shift;
+    HJ[3]  = 1+row_shift;
+    HJ[4]  = 1+row_shift;
+    HJ[5]  = 1+row_shift;
+    HJ[6]  = 2+row_shift;
+    HJ[7]  = 2+row_shift;
+    HJ[8]  = 2+row_shift;
 
     return 9;
 }

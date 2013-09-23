@@ -1,5 +1,5 @@
 #include "nscs.h"
-#include "nscs_sp.h"
+#include "spmat.h"
 #include "barriers.h"
 #include <math.h>
 /**
@@ -8,23 +8,25 @@
  *
  * NSCS solves a conic programming problem given in 
  * standard form,
- * min c'x st Ax=b x_c \in K.
- * Where x_c denotes the set of constrained entries of x.
+ * min c'x st Ax=b x \in K.
  * K is the product of several cones defined by the
- * arrays nK, iK. 
+ * arrays problem.nK, problem.iK. 
  * 
- * K = K_1xK_2xK_3,.....,K_q
+ * K = K_0xK_1xK_2,.....,K_q-1
  *
  * Where 
  * each cone is one of: positive orthant (0), second order cone (1), 
  * semi-definite cone (2), exponential cone (3) , power cone (4).
  * 
  * tK is an array of integers and of length q. The value tK[0] indicates the type
- * of cone 1,..., tK[q-1] indicates the type of cone K_q.
+ * of cone 0,..., tK[k_cones-1] indicates the type of cone K_{k_cones-1}.
  *
  * nK is a length q array of integers. It parametrizes the size of the cones,
- * nK[0] the size of cone 1,..., nK[q] the size 
- * of cone q.
+ * nK[0] the size of cone 1,..., nK[k_cones-1] the size 
+ * of cone k_cones-1. All exponential cones and power cones must be of size 3. Their
+ * corresponding nK[.] cannot be ignored and must be set to 3.
+ *
+ 
  *
  *
  * @param A the constraint matrix
@@ -51,7 +53,7 @@ int nscs(problem_t* problem, parameters_t* pars, result_t* result)
     //This variable holds a reference to the state structure
     state_t state;
     //Allocate the structure to hold the state of the algorithm
-    status    =  allocate_state(state, problem);
+    status     =  allocate_state(state, problem);
     if(status != OK)
     {
         free_state(state);
@@ -67,14 +69,14 @@ int nscs(problem_t* problem, parameters_t* pars, result_t* result)
     for(m_iter = 0;m_iter < pars->max_iter; m_iter++)
     {
         //Evaluate the barrier function
-        eval_hess(*problem,state.x->v,state);
+        eval_hess(*problem,state.x,state);
         //Calculate the approximate direction
         res = solve_approximate_tangent_direction(state);
         //Do a line search 
         res = linesearch_atd(state,*pars,*problem);
         //Calculate the new residuals
         res = calculate_residuals(state);
-         
+        //Check the centering 
         bool do_center = !check_centering_condition(state,pars);
         int c_iter = 0;
         //Run the centering routine
@@ -97,11 +99,6 @@ int nscs(problem_t* problem, parameters_t* pars, result_t* result)
             return CENTER_ITERS_EXCEEDED;
         }
 
-        //At this point the iterate is centered and 
-        //we need to do the lifting to calculate
-        //the approximate scaling point
-        res = primal_lifting(state);
-        
         //Print the output and check for exit
         if(pars->print)
         { 
@@ -132,14 +129,14 @@ int nscs(problem_t* problem, parameters_t* pars, result_t* result)
 void free_state(state_t state)
 {
     //Free the present directions
-    if(!(state.dy==NULL))   free_vec(*state.dy);
-    if(!(state.dx==NULL))   free_vec(*state.dx);
-    if(!(state.ds==NULL))   free_vec(*state.ds);
+    if(!(state.dy==NULL))   free(state.dy);
+    if(!(state.dx==NULL))   free(state.dx);
+    if(!(state.ds==NULL))   free(state.ds);
    
     //(Free the residual vectors
-    if(!(state.p_res==NULL))   free_vec(*state.p_res);
-    if(!(state.d_res==NULL))   free_vec(*state.d_res);
-    if(!(state.c_res==NULL))   free_vec(*state.c_res);
+    if(!(state.p_res==NULL))   free(state.p_res);
+    if(!(state.d_res==NULL))   free(state.d_res);
+    if(!(state.c_res==NULL))   free(state.c_res);
    
     if(!((state.H.I==NULL)&&(state.H.J==NULL)&&(state.H.V==NULL))) free_spmat(state.H);
 
@@ -150,6 +147,7 @@ void free_state(state_t state)
  */
 int validate_pars(problem_t* problem, parameters_t* pars)
 {
+    //Check that the cone is defined 
     return VALIDATION_OK;
 }
 
@@ -161,19 +159,19 @@ int allocate_state(state_t state,problem_t* problem)
     //if(state == NULL) return OUT_OF_MEMORY;
     
     //Allocate the vectors that hold the present iterate
-    state.y = calloc_vec(problem->m);
+    state.y = (double*)calloc(problem->A.m,sizeof(double));
     if(state.y == NULL) return OUT_OF_MEMORY;
-    state.x = calloc_vec(problem->n);
+    state.x = (double*)calloc(problem->A.n,sizeof(double));
     if(state.x == NULL) return OUT_OF_MEMORY;
-    state.s = calloc_vec(problem->n-problem->free); //s is the size of the dimensions of all constrained variables
+    state.s = (double*)calloc(problem->A.n,sizeof(double)); //s is the size of the dimensions of all constrained variables
     if(state.s == NULL) return OUT_OF_MEMORY;
 
     //Allocate the vectors that hold the present residual
-    state.p_res = calloc_vec(problem->m);
+    state.p_res = (double*)calloc(problem->A.m,sizeof(double));
     if(state.p_res == NULL) return OUT_OF_MEMORY;
-    state.d_res = calloc_vec(problem->n);
+    state.d_res = (double*)calloc(problem->A.n,sizeof(double));
     if(state.d_res == NULL) return OUT_OF_MEMORY;
-    state.c_res = calloc_vec(problem->n-problem->free);
+    state.c_res = (double*)calloc(problem->A.n,sizeof(double));
     if(state.c_res == NULL) return OUT_OF_MEMORY;
     
     return OK;
@@ -217,10 +215,6 @@ int calculate_centering_direction(state_t state, parameters_t* pars)
 }
 
 int centering_linesearch(state_t state, parameters_t* pars)
-{
-}
-
-int primal_lifting(state_t state)
 {
 }
 

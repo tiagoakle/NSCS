@@ -1,5 +1,5 @@
 %Method to call the atd linesearch implementation
-function [a,nbisections] = line_search_c(v,K,pars)
+function [a,nbisections,objvalb] = line_search_cent_c(v,K,pars)
    
     %int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, double tau, double kappa, double* dx,\
     %                                                                                                    double* dy,\
@@ -17,7 +17,6 @@ function [a,nbisections] = line_search_c(v,K,pars)
     %                                                                                                    csi nnzH,\
     %                                                                                                    double* a,\
     %                                                                                                    int* nbacktrack);
-
     tau = v.tau;
     kappa = v.kappa;
     
@@ -64,18 +63,19 @@ function [a,nbisections] = line_search_c(v,K,pars)
     m = size(v.y,1);
     n = size(v.x,1);
 
+    %Define pointers for the return values
+    p_a = libpointer('doublePtr',0);
+    p_nsect = libpointer('int32Ptr',0);
+    p_objval = libpointer('doublePtr',v.centres); %Load the objective centrality
+    
     px  = full(v.x(permute));
     ps  = full(v.s(permute));
-    pdx = full(v.dx(permute));
-    pds = full(v.ds(permute));
+    pdx = full(v.dxc(permute));
+    pds = full(v.dsc(permute));
     y   = full(v.y);
     pdy = full(v.dy);
-
-    p_a = libpointer('doublePtr',0);
-    p_i = libpointer('int32Ptr',0);
-
-
-    ret = calllib('nscs','linesearch_atd_no_structs',m,n,px,y,ps,v.tau,v.kappa,pdx,pdy,pds,v.dtau,v.dkappa,pars.lsccent,pars.eta,pars.theta,pars.lsmaxit,k_count,nK,tK,K.nu,nnzH,p_a,p_i);
+    ret = calllib('nscs','linesearch_cent_no_structs',m,n,px,y,ps,v.tau,v.kappa,pdx,pdy,pds,v.dtau,v.dkappa,pars.lscaff,pars.eta,pars.theta,v.mu,pars.lsmaxit,k_count,nK,tK,K.nu,nnzH,p_a,p_nsect,p_objval);
     a = p_a.value;
-    nbisections = p_i.value;
+    nbisections = p_nsect.value;
+    objvalb = p_objval.value;
 end

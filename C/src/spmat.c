@@ -1,19 +1,8 @@
-#include "nscs_sp.h"
+#include "spmat.h"
 /**
  * Contains the methods used to create delete and operate
  * on spmatrix structures and vec structures
  */
-
-//Allocates a vector of size n
-vec* calloc_vec(int n)
-{
-    vec* v = (vec*)calloc(1, sizeof(vec));
-    if(v == NULL) return NULL;
-
-    v->v   = (double*)calloc(n, sizeof(double));
-    v->n   = n;
-    return v;
-}
 
 //Allocates a matrix of size nnz
 spmat* calloc_spmat(int m, int n, int nnz)
@@ -37,7 +26,3 @@ void free_spmat(spmat A)
     free(A.V);
 }
 
-void free_vec(vec v)
-{
-    free(v.v);
-}

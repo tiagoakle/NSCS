@@ -70,139 +70,145 @@ while true
         
     %-------------------- Start of backtracking linesearch ----------------------
     %Call the C linesearch
+    c_a = 1.0;
 %    if v.k == 1
-     [c_a,nbisections] = line_search_c(v,d,K,pars);
+    [c_a,nbisections] = line_search_c(v,K,pars);
+    v.a = c_a;
+    xa = v.x + c_a*v.dx;
+    sa = v.s + c_a*v.ds;
+    taua = v.tau+c_a*v.dtau;
+    kappaa = v.kappa+c_a*v.kappa;
 %    end
 
-    % set intial step length 
-    a0 = 1.0;
-    a  = a0;
-    if v.dkappa < 0
-        kapmax = -v.kappa/v.dkappa;
-        a = min(a,kapmax);
-    end
-    if v.dtau < 0
-        taumax = -v.tau/v.dtau;
-        a = min(a,taumax);
-    end
-    % if either kap or tau is blocking, multiply by eta
-    % so we do not hit boundary:
-    if a < a0
-        a = pars.eta*a;
-    end
-
-    % couter for number of bisections
-    nsect = 0;
-    
-    %Main linesearch loop
-    for j = 1:pars.lsmaxit
-        
-        % point to try:
-        xa     = v.x     + a * v.dx;
-        sa     = v.s     + a * v.ds;
-        taua   = v.tau   + a * v.dtau;
-        kappaa = v.kappa + a * v.dkappa;
-        
-        % new duality gap:
-        dga    = xa'*sa + taua*kappaa;
-        mua    = dga / (K.nu + 1);
-        
-        % evaluate barriers at new point:
-        % check only feasibility, so want = [-1,-1,-1]:
-        % Evaluate the primal barrier for f,g,H
-        FP = BarrFuncP(xa,K,[1,1,1]); 
-
-        %Call the c Hessian evaluation
-        primal_feasible = eval_primal_feas_c(K,xa);
-
-        
-        if(~isempty(FP{3})) 
-            [H] = eval_hessian_c(K,xa);
-            g   = eval_grad_c(K,xa);
-            HD  = full(max(max(abs(H-FP{3}))));
-            GD  = max(abs(g-FP{2}));
-            if HD > 1e-5
-                fprintf(' LARGE Hessian difference %g ', HD );
-            end
-            if GD > 1e-5
-                fprintf('LARGE Gradient difference %g ', GD );
-            end
-        end
-        % Check the dual feasibility
-        FD = BarrFuncD(sa,K,[1,-1,-1]);
-        dual_feasible = eval_dual_feas_c(K,sa);
-
-        if(FP{4}~=primal_feasible)
-            fprintf('Inconsistent feasiblity criteria for the primal (C:%i,M:%i)\n',primal_feasible,FP{4});
-        end
-        if(dual_feasible~=FD{4})
-            fprintf('Inconsistent feasiblity criteria for the dual (C:%i,M:%i)\n',dual_feasible,FD{4});
-        end
-        
-
-        dosect = false; %True if we must backtrack
-        %If either the primal is infeasible or 
-        % the dual is infeasible backtrack
-        if ~dual_feasible < 0 
-            dosect  = true;
-            R.block = 'pf';
-        elseif ~primal_feasible < 0 
-            dosect  = true;
-            R.block = 'df'; 
-        else %If the iterate is pirmal and dual feasible evaluate the centrality
-            
-           % psi       = sa + mua*FP{2};
-           % centmeas5 = sqrt(psi'*(FP{3}\psi)); %XXX: Linear solve
-           % centmeas = centmeas5;
-            
-            [centmeas] = eval_centmeas_c(K,xa,sa,mua);
-           
-         %   %XXX debug
-         %   m_hpsi = FP{3}\psi;
-         %   fprintf('Ndiff of Hinvpsi: %g\n', norm(hpsi-m_hpsi)); 
-         %   fprintf('Ndiff of psi: %g\n', norm(psi-c_psi)); 
-         %   fprintf('Ndiff of H %g\n',full(max(max(abs(H-FP{3})))));
-         %   fprintf('Ndiff of g %g\n',full(max(abs(gr-FP{2}))));
-         %   fprintf('mua_mat %f\n',mua);
-         %   fprintf('Centmeas: C: %f M: %f, lim: %f\n',c_centmeas, centmeas, mua*pars.theta);
-
-            if centmeas > mua*pars.theta
-                dosect  = true;
-                R.block = 'ce';
-            end
-        end
-        
-        if dosect
-            a     = a*pars.lscaff; 
-            nsect = nsect + 1;
-        else
-            break;
-        end
-            
-    end %end of main linesearch loop
-
-    v.a = a;
-    fprintf('C linesearch a, M linesearch a: %g, %g \n',c_a,v.a);
-    
-    % Check if the linesearch did not find 
-    % a feasible point in the maximum number of iterations
-    if j == pars.lsmaxit
-        xa = v.x + a * v.dx;
-        FP = BarrFuncP(xa,K,[1,1,-1]);
-        if FP{4} < 0
-
-            error(['linesearch: failed to find feasible point.',...
-                ' pars.lscaff too close to 1 ???']);
-        end
-    end
+%    % set intial step length 
+%    a0 = 1.0;
+%    a  = a0;
+%    if v.dkappa < 0
+%        kapmax = -v.kappa/v.dkappa;
+%        a = min(a,kapmax);
+%    end
+%    if v.dtau < 0
+%        taumax = -v.tau/v.dtau;
+%        a = min(a,taumax);
+%    end
+%    % if either kap or tau is blocking, multiply by eta
+%    % so we do not hit boundary:
+%    if a < a0
+%        a = pars.eta*a;
+%    end
+%
+%    % couter for number of bisections
+%    nsect = 0;
+%    
+%    %Main linesearch loop
+%    for j = 1:pars.lsmaxit
+%        
+%        % point to try:
+%        xa     = v.x     + a * v.dx;
+%        sa     = v.s     + a * v.ds;
+%        taua   = v.tau   + a * v.dtau;
+%        kappaa = v.kappa + a * v.dkappa;
+%        
+%        % new duality gap:
+%        dga    = xa'*sa + taua*kappaa;
+%        mua    = dga / (K.nu + 1);
+%        
+%        % evaluate barriers at new point:
+%        % check only feasibility, so want = [-1,-1,-1]:
+%        % Evaluate the primal barrier for f,g,H
+%        FP = BarrFuncP(xa,K,[1,1,1]); 
+%
+%        %Call the c Hessian evaluation
+%        primal_feasible = eval_primal_feas_c(K,xa);
+%
+%        
+%        if(~isempty(FP{3})) 
+%            [H] = eval_hessian_c(K,xa);
+%            g   = eval_grad_c(K,xa);
+%            HD  = full(max(max(abs(H-FP{3}))));
+%            GD  = max(abs(g-FP{2}));
+%            if HD > 1e-5
+%                fprintf(' LARGE Hessian difference %g ', HD );
+%            end
+%            if GD > 1e-5
+%                fprintf('LARGE Gradient difference %g ', GD );
+%            end
+%        end
+%        % Check the dual feasibility
+%        FD = BarrFuncD(sa,K,[1,-1,-1]);
+%        dual_feasible = eval_dual_feas_c(K,sa);
+%
+%        if(FP{4}~=primal_feasible)
+%            fprintf('Inconsistent feasiblity criteria for the primal (C:%i,M:%i)\n',primal_feasible,FP{4});
+%        end
+%        if(dual_feasible~=FD{4})
+%            fprintf('Inconsistent feasiblity criteria for the dual (C:%i,M:%i)\n',dual_feasible,FD{4});
+%        end
+%        
+%
+%        dosect = false; %True if we must backtrack
+%        %If either the primal is infeasible or 
+%        % the dual is infeasible backtrack
+%        if ~dual_feasible < 0 
+%            dosect  = true;
+%            R.block = 'pf';
+%        elseif ~primal_feasible < 0 
+%            dosect  = true;
+%            R.block = 'df'; 
+%        else %If the iterate is pirmal and dual feasible evaluate the centrality
+%            
+%           % psi       = sa + mua*FP{2};
+%           % centmeas5 = sqrt(psi'*(FP{3}\psi)); %XXX: Linear solve
+%           % centmeas = centmeas5;
+%            
+%            [centmeas] = eval_centmeas_c(K,xa,sa,mua);
+%           
+%         %   %XXX debug
+%         %   m_hpsi = FP{3}\psi;
+%         %   fprintf('Ndiff of Hinvpsi: %g\n', norm(hpsi-m_hpsi)); 
+%         %   fprintf('Ndiff of psi: %g\n', norm(psi-c_psi)); 
+%         %   fprintf('Ndiff of H %g\n',full(max(max(abs(H-FP{3})))));
+%         %   fprintf('Ndiff of g %g\n',full(max(abs(gr-FP{2}))));
+%         %   fprintf('mua_mat %f\n',mua);
+%         %   fprintf('Centmeas: C: %f M: %f, lim: %f\n',c_centmeas, centmeas, mua*pars.theta);
+%
+%            if centmeas > mua*pars.theta
+%                dosect  = true;
+%                R.block = 'ce';
+%            end
+%        end
+%        
+%        if dosect
+%            a     = a*pars.lscaff; 
+%            nsect = nsect + 1;
+%        else
+%            break;
+%        end
+%            
+%    end %end of main linesearch loop
+%
+%    v.a = a;
+%    fprintf('C linesearch a, M linesearch a: %g, %g \n',c_a,v.a);
+%    
+%    % Check if the linesearch did not find 
+%    % a feasible point in the maximum number of iterations
+%    if j == pars.lsmaxit
+%        xa = v.x + a * v.dx;
+%        FP = BarrFuncP(xa,K,[1,1,-1]);
+%        if FP{4} < 0
+%
+%            error(['linesearch: failed to find feasible point.',...
+%                ' pars.lscaff too close to 1 ???']);
+%        end
+%    end
 
     %Take the step 
 
     % store the previous step
-    v.xprev     = v.x;
-    v.gprev     = v.F{2};
-    v.tauprev   = v.tau;
-    v.kappaprev = v.kappa;
+%    v.xprev     = v.x;
+%    v.gprev     = v.F{2};
+%    v.tauprev   = v.tau;
+%    v.kappaprev = v.kappa;
     
     % take step:
     v.x     = xa;
@@ -266,9 +272,8 @@ while true
             rs.r3 = 0;
             rs.r4 = v.mu   - (v.tau*v.kappa);
             rs.r5 = - v.s-v.mu*v.F{2}; %        - (-pars.A'*v.y + v.mu*v.F{2} + v.tau*pars.c);
-     
-    
-            % compute first centering measure:
+         
+            % compute the centering measure at the present point
             r2cent     = rs.r5;
             tmp        = r2cent/v.mu;
             %Cholesky of the hessian
@@ -290,20 +295,27 @@ while true
             
             % solve for centering direction:
 
-            K5= [[sparse(m,m), pars.A             ,-pars.b    ,sparse(m,n),sparse(m,1)];...
-                 [-pars.A'   , sparse(n,n)        ,pars.c     ,-speye(n,n),sparse(n,1)];...
-                 [pars.b'    , -pars.c'           ,sparse(1,1),sparse(1,n),-1         ];...
-                 [sparse(1,m), sparse(1,n)        ,v.kappa    ,sparse(1,n),v.tau      ];...
-                 [sparse(n,m), sparse(v.mu*v.F{3}),sparse(n,1),speye(n,n) ,sparse(n,1)]];
-            
-            rhs     = [rs.r1;rs.r2;rs.r3;rs.r4;rs.r5];
-            d       = K5\rhs;
-            v.dyc    = d(1:m);
-            v.dxc    = d(m+1:m+n);
-            v.dtauc  = d(m+n+1);
-            v.dsc    = d(m+n+2:m+2*n+1);
-            v.dkappac= d(m+2*n+2);
+%            K5= [[sparse(m,m), pars.A             ,-pars.b    ,sparse(m,n),sparse(m,1)];...
+%                 [-pars.A'   , sparse(n,n)        ,pars.c     ,-speye(n,n),sparse(n,1)];...
+%                 [pars.b'    , -pars.c'           ,sparse(1,1),sparse(1,n),-1         ];...
+%                 [sparse(1,m), sparse(1,n)        ,v.kappa    ,sparse(1,n),v.tau      ];...
+%                 [sparse(n,m), sparse(v.mu*v.F{3}),sparse(n,1),speye(n,n) ,sparse(n,1)]];
+%            
+%            rhs     = [rs.r1;rs.r2;rs.r3;rs.r4;rs.r5];
+%            d       = K5\rhs;
+%            v.dyc    = d(1:m);
+%            v.dxc    = d(m+1:m+n);
+%            v.dtauc  = d(m+n+1);
+%            v.dsc    = d(m+n+2:m+2*n+1);
+%            v.dkappac= d(m+2*n+2);
 
+            [d,CF] = solve_linear_system(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,rs.r1,rs.r2,rs.r3,rs.r4,rs.r5);
+            v.dxc    = d{1};
+            v.dtauc  = d{2};
+            v.dyc    = d{3};
+            v.dsc    = d{4};
+            v.dkappac= d{5};
+ 
             % counting:
             R.dat.nkktsolves = R.dat.nkktsolves  + 1;
 
@@ -311,8 +323,11 @@ while true
             if R.stop, R = checkstopcrit(v,pars,R); break; end
             
             % line search:
-            v = linesearchcent(v,K,pars);
-            
+            %v = linesearchcent(v,K,pars);
+            [a_cent,nbacktracks,objvalb] = line_search_cent_c(v,K,pars);
+            v.ac = a_cent;
+            v.centobjval = objvalb;
+
             % store previous step before taking new step (for bfgs)
             v.xprev = v.x;
             v.gprev = v.F{2};
