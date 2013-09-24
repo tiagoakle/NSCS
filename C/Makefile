@@ -7,7 +7,7 @@ SRCDIR=./src
 CPPSRCDIR=./src/cpp
 TESTDIR=./test
 
-TESTSOURCES=test_util.c test_linear_solver.c test_smatvec.c main_tests.c test_barriers.c 
+TESTSOURCES=test_util.c test_linear_solver.c test_smatvec.c main_tests.c test_barriers.c test_centering_measure.c test_nscs.c
 TESTOBJECTS=$(TESTSOURCES:.c=.o)
 
 CPPSOURCES=
@@ -65,3 +65,6 @@ clean:
 	rm $(OBJECTDIR)/*.o
 	rm testprog
 	rm $(LIBOUTDIR)/$(DYLIB)
+
+rtest: clean all 
+	./testprog

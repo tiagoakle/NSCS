@@ -23,24 +23,9 @@ typedef struct
 
 } spmat;
 
-/**
- * Structure to hold a dense vector
- */
-typedef struct
-{
-    //Size 
-    csi n;
-    //Data
-    double *v;
-} vec;
-
-//Allocates a vector of size n
-vec* calloc_vec(int n);
 
 //Allocates a matrix of size nnz
-spmat* calloc_spmat(int m, int n, int nnz);
-//Frees the vector 
-void free_vec(vec v);
+int calloc_spmat(spmat* spmat, csi m, csi n, csi nnz);
 //Frees the arrays that make the matrix
 void free_spmat(spmat A);
 

@@ -45,6 +45,8 @@ typedef struct
 
    //Present value of the Hessian
    spmat H; 
+   //Present value of the primal gradient
+   double* grad;
 
    //Present value of the complementarity
    double mu;
@@ -69,10 +71,8 @@ typedef struct
    csi   *nK;
    int   k_count; //Number of cones
    double  delta; //Primal regularization
-   double  gamma; //Dual regularization
-   
+   double  gamma; //Dual regularization   
    double nu;     //Complexity
-   csi    nnzH;   //Number of non zeros in the hessian
 
 } problem_t; 
 
@@ -112,11 +112,10 @@ typedef struct
 
 } parameters_t;
 
-int nscs(problem_t* problem, parameters_t* pars, result_t* result);
+int nscs(problem_t* problem, parameters_t* pars, result_t* result, double* y0, double* x0, double* t0, double* s0, double* k0);
 void free_state(state_t state);
 int validate_pars(problem_t* problem, parameters_t* pars);
-int allocate_state(state_t state,problem_t* problem);
-int  calculate_initial_point(state_t state,parameters_t* pars);
+int allocate_state(state_t* state,problem_t* problem);
 int  solve_approximate_tangent_direction(state_t state);
 
 bool check_centering_condition(state_t state, parameters_t* pars);
@@ -126,6 +125,7 @@ void print_and_log(state_t state ,int m_iter, int c_iter,parameters_t* pars);
 int check_stopping_criteria(state_t state,parameters_t* pars);
 void print_final(state_t state);
 void build_result(state_t state ,result_t* res, parameters_t* pars);
-
 int calculate_residuals(state_t state);
+int val_range(double param, double min, double max, char* name);
+int init(problem_t* prob, state_t *state, double* y0, double* x0, double* t0, double* s0, double* k0);
 #endif

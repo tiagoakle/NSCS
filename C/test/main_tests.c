@@ -5,6 +5,8 @@
 #include "test_linear_solver.h"
 #include "test_smatvec.h"
 #include "test_barriers.h"
+#include "test_centering_measure.h"
+#include "test_nscs.h"
 #include "cblas.h"
 
 
@@ -35,6 +37,20 @@ int main(void)
 
  //linear solver 
  s  = linear_solver_suite();
+ sr = srunner_create (s);
+ srunner_run_all (sr, CK_VERBOSE);
+ number_failed = srunner_ntests_failed (sr);
+ srunner_free (sr);
+
+ //Centering measure
+ s = centering_measure_suite();
+ sr = srunner_create (s);
+ srunner_run_all (sr, CK_VERBOSE);
+ number_failed = srunner_ntests_failed (sr);
+ srunner_free (sr);
+
+ //nscs test suite
+ s = nscs_test_suite();
  sr = srunner_create (s);
  srunner_run_all (sr, CK_VERBOSE);
  number_failed = srunner_ntests_failed (sr);

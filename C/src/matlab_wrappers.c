@@ -111,7 +111,7 @@ int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, doubl
     spmat A;
     A.n = n;
     A.m = m;
-
+   
     problem_t prob;
     prob.A       = A;
     prob.tK      = tK;
@@ -120,10 +120,13 @@ int linesearch_atd_no_structs( int m, int n, double*x, double*y, double*s, doubl
     prob.delta   = 1.e-10;
     prob.gamma   = 1.e-10;
     prob.nu      = nu;
-    prob.nnzH    = nnzH;
 
     //Construct the state
+    spmat H;
+    H.nnz = nnzH;
+
     state_t state;
+    state.H = H;
     state.y = y;
     state.x = x; 
     state.s = s;
@@ -204,10 +207,13 @@ int linesearch_cent_no_structs( int m, int n, double*x, double*y, double*s, doub
     prob.delta   = 1.e-10;
     prob.gamma   = 1.e-10;
     prob.nu      = nu;
-    prob.nnzH    = nnzH;
 
     //Construct the state
+    spmat H;
+    H.nnz = nnzH;
+
     state_t state;
+    state.H = H;
     state.y = y;
     state.x = x; 
     state.s = s;

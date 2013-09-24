@@ -20,6 +20,8 @@
 #define VALIDATION_OK 0
 #define VALIDATION_ERROR 1
 #define BACKTRACK_FAIL 2
+#define INVALID_PARAMETER 3
+#define MISSING_ARGUMENT 4
 
 //Other errors
 #define CENTER_ITERS_EXCEEDED -2

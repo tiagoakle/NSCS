@@ -160,12 +160,13 @@ START_TEST(test_exp_primal_feasible)
         x[0] = rand()/(double)RAND_MAX - 0.5;
         x[2] = rand()/(double)RAND_MAX+1.;
         x[1] = x[2]*exp(x[0]/x[2]) + rand()/(double)RAND_MAX;
-        ck_assert(exp_primal_feas(x));
+        ck_assert_msg(exp_primal_feas(x),"Test retured infeasible x2e(x0/x2):%g, <x1: %g, (x1:%g,x2:%g,x3:%g)",-x[2]*exp(x[0]/x[2]),x[1],x[0],x[1],x[2]);
 
         x[0] = rand()/(double)RAND_MAX - 0.5;
         x[2] = rand()/(double)RAND_MAX + 1.;
         x[1] = x[2]*exp(x[0]/x[2]) - rand()/(double)RAND_MAX;
-        ck_assert_msg(!exp_primal_feas(x),"Test retured feasible x2e(x0/x2) %g, x1 %g, %g,%g,%g",-x[2]*exp(x[0]/x[2]),x[1],x[0],x[1],x[2]);
+
+        ck_assert_msg(!exp_primal_feas(x),"Test retured feasible x2e(x0/x2):%g, >x1: %g, (x1:%g,x2:%g,x3:%g)",-x[2]*exp(x[0]/x[2]),x[1],x[0],x[1],x[2]);
 
     }
 }
@@ -181,15 +182,14 @@ START_TEST(test_exp_dual_feasible)
     for(j=0;j<tests;j++)
     { 
         x[0] = -rand()/(double)RAND_MAX-1;
-        x[1] = rand()/(double)RAND_MAX -0.5;
-        x[2] = -x[0]*exp(x[1]/x[0]-1.) + rand()/(double)RAND_MAX;
-        ck_assert_msg(exp_dual_feas(x),"Point %g,%g,%g reported dual infeasible  x[0]*exp(x[1]/x[0]-1.) %g, x[2] %g ",x[0],x[1],x[2],x[0]*exp(x[1]/x[0]-1.),x[2]);
- 
+        x[2] = rand()/(double)RAND_MAX -0.5;
+        x[1] = -x[0]*exp(x[2]/x[0]-1.) + rand()/(double)RAND_MAX;
+        ck_assert_msg(exp_dual_feas(x),"Point %g,%g,%g reported dual infeasible -x[0]*exp(x[2]/x[0]-1.) %g, x[2] %g ",x[0],x[1],x[2],-x[0]*exp(x[2]/x[0]-1.),x[1]);
+        
         x[0] = -rand()/(double)RAND_MAX-1;
-        x[1] = rand()/(double)RAND_MAX -0.5;
-        x[2] = -x[0]*exp(x[1]/x[0]-1.) - rand()/(double)RAND_MAX;
-        ck_assert(!exp_dual_feas(x));
-
+        x[2] = rand()/(double)RAND_MAX -0.5;
+        x[1] = -x[0]*exp(x[2]/x[0]-1.) - rand()/(double)RAND_MAX;
+        ck_assert_msg(!exp_dual_feas(x),"Point %g,%g,%g reported dual feasible -x[0]*exp(x[2]/x[0]-1.) %g, x[2] %g ",x[0],x[1],x[2],-x[0]*exp(x[2]/x[0]-1.),x[1]);
     }
 }
 END_TEST
@@ -562,10 +562,7 @@ START_TEST(test_values_two_cone_hessian)
     x[12] = rand()/(double)RAND_MAX + 0.01;
     x[11] = x[12]*exp(x[10]/x[12])+1;
     
-    vec vx; 
-    vx.v = x;
-    vx.n = n;
-    state.x = &vx;
+    state.x = x;
    
    //Evaluate the hessian    
     eval_hess(problem,x,state);
