@@ -207,8 +207,8 @@ while true
     % store the previous step
 %    v.xprev     = v.x;
 %    v.gprev     = v.F{2};
-%    v.tauprev   = v.tau;
-%    v.kappaprev = v.kappa;
+     v.tauprev   = v.tau;
+     v.kappaprev = v.kappa;
     
     % take step:
     v.x     = xa;

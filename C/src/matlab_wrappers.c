@@ -3,6 +3,10 @@
 #include "nscs.h"
 #include "matlab_include/matlab_lib.h"
 #include "eval_cent_meas.h"
+#include "test_util.h"
+#include "line_search.h"
+#include "barriers.h"
+
 //Contains the matlab wrappers for certain calls to the library
 
 //The following functions should substitute the solve KKT system call
@@ -337,4 +341,54 @@ void eval_cent_meas_no_structs(csi k_count, csi* nK, int* tK, double delta, doub
    free(state.H.I);
    free(state.H.J);
    free(state.H.V);
+}
+
+
+void nscs_no_structs(csi k_count, csi* nK, int* tK,\
+                     csi *AI, csi* AJ, double* AV, csi nnzA, csi m, csi n,\
+                     double *c, double *b,\
+                     double* y, double* x, double* s, double* tau, double* kappa,\
+                     int wy, int ws, int wt, int wk,\
+                     int max_iter, int max_center_iter, double theta, double lscaff, double lsccent,\
+                     double eta, int max_backtrack, double delta, double gamma, double beta,\
+                     double p_relstop, double d_relstop, double rel_gap_relstop, double rho_g,\
+                     double rhoI, double rhoM)
+{
+    //Define the structures
+    problem_t problem;
+    parameters_t pars;
+    
+    spmat A;
+    A.m = m;
+    A.n = n;
+    A.nnz = nnzA;
+    problem.A = A;
+    problem.b = b;
+    problem.c = c;
+    problem.tK = tK;
+    problem.nK = nK;
+    problem.k_count = k_count;
+
+    //Build the parameters structure
+    pars.print = true;
+    pars.max_iter = max_iter;
+    pars.max_center_iter  = max_center_iter;
+    pars.theta            = theta;
+    pars.lscaff           = lscaff;
+    pars.lsccent          = lsccent;
+    pars.eta              = eta;
+    pars.max_backtrack    = max_backtrack;
+    pars.delta            = delta;
+    pars.gamma            = gamma;
+    pars.beta             = beta;
+    pars.p_relstop        = p_relstop;
+    pars.d_relstop        = d_relstop;
+    pars.rho_g            = rho_g;
+    pars.rhoI             = rhoI;
+    pars.rhoM             = rhoM;
+
+    //Call the solver
+    nscs(&problem,&pars,y,x,tau,x,kappa,wy,ws,wt,wk);
+    
+    //int nscs(problem_t* problem, parameters_t* pars, double* y0, double* x0, double* t0, double* s0, double* k0);
 }

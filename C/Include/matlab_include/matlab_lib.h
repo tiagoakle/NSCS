@@ -98,6 +98,16 @@ void eval_grad_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, doubl
 void eval_cent_meas_no_structs(csi k_count,csi* nK, int* tK, double delta,\
                                double* x, double* s, csi n, csi nnzH, double mua,\
                                double* psi, double * hpsi, double* centmeas);
+
+void nscs_no_structs(csi k_count, csi* nK, int* tK,\
+                     csi *AI, csi* AJ, double* AV, csi nnzA, csi m, csi n,\
+                     double *c, double *b,\
+                     double* y, double* x, double* s, double* tau, double* kappa,\
+                     int wy, int ws, int wt, int wk,\
+                     int max_iter, int max_center_iter, double theta, double lscaff, double lsccent,\
+                     double eta, int max_backtrack, double delta, double gamma, double beta,\
+                     double p_relstop, double d_relstop, double rel_gap_relstop, double rho_g,\
+                     double rhoI, double rhoM);
 #ifdef __cplusplus
 }
 #endif

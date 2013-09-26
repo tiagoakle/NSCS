@@ -24,7 +24,16 @@
 #define MISSING_ARGUMENT 4
 
 //Other errors
-#define CENTER_ITERS_EXCEEDED -2
 #define OUT_OF_MEMORY -99
 #define INTERNAL_ERROR -98
+
+//Stopping reasons
+#define END_CONTINUE  20
+#define END_OPTIMAL   21
+#define END_ILL_POSED 22
+#define END_P_INFEAS  23
+#define END_D_INFEAS  24
+#define END_MAX_CENTER_ITER 25
+#define END_MAX_ITER 26
+
 #endif

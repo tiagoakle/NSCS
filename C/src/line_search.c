@@ -15,7 +15,7 @@ int linesearch_atd(state_t* state , parameters_t  pars, problem_t prob)
 {
     double a0 = 1.; //Initial step length
     double a  = a0;
-
+    state->nbacktrack = 0;
     // Calculate the largest step before either tau or kappa reach the boundary
     if(state->dkappa < 0) a = fmin(a,-state->kappa/state->dkappa);
     if(state->dtau < 0) a = fmin(a,-state->tau/state->dtau);
@@ -155,6 +155,7 @@ int linesearch_centering(state_t* state , parameters_t  pars, problem_t prob)
 {
     double a0 = 1.; //Initial step length
     double a  = a0*pars.eta;
+    state->ncentbacktrack = 0;
 
     // Calculate the largest step before either tau or kappa reach the boundary
     if(state->dkappa < 0) a = fmin(a,-state->kappa/state->dkappa);
@@ -236,7 +237,7 @@ int linesearch_centering(state_t* state , parameters_t  pars, problem_t prob)
         if(dosect)
         {
             a = a*pars.lsccent;
-            state->nbacktrack += 1; 
+            state->ncentbacktrack += 1;  
         }
         else
         {

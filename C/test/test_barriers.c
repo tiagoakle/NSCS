@@ -2,10 +2,11 @@
 #include "barriers.h"
 #include "check.h"
 #include "stdio.h"
-#include "cblas.h"
+#include "OpenBLAS/cblas.h"
 #include "test_barriers.h"
 #include "umfpack.h"
 #include "smatvec.h"
+#include "linear_solvers.h"
 #undef I
 
 START_TEST(s_test_pos_orthant)

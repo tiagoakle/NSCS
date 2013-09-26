@@ -1,4 +1,4 @@
-CC=llvm-gcc-4.2
+CC=llvm-g++-4.2
 CFLAGS=-fPIC
 
 

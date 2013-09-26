@@ -494,9 +494,9 @@ START_TEST(test_full_hsd_soltuion_no_structs)
     read_vector(name,r4);
    
     //Allocate space for the return values
-    double *dx = calloc(A.n,sizeof(double));
-    double *dy = calloc(A.m,sizeof(double));
-    double *ds = calloc(H.n,sizeof(double));
+    double *dx = (double*)calloc(A.n,sizeof(double));
+    double *dy = (double*)calloc(A.m,sizeof(double));
+    double *ds = (double*)calloc(H.n,sizeof(double));
     double dt, dk;
     
     double mu  = doubles[0];

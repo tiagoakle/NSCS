@@ -9,6 +9,8 @@
 #include "smatvec.h"
 #include "umfpack.h"
 #include "spmat.h"
+#include "linear_solvers.h"
+#include "barriers.h"
 
 START_TEST (test_centering_measure)
 {
@@ -42,21 +44,22 @@ START_TEST (test_centering_measure)
     spmat H;
     H.n = A.n;
     H.m = A.n;
-    H.I = calloc(nnzH,sizeof(csi));
-    H.J = calloc(nnzH,sizeof(csi));
-    H.V = calloc(nnzH,sizeof(double));
+    H.I = (csi*)calloc(nnzH,sizeof(csi));
+    H.J = (csi*)calloc(nnzH,sizeof(csi));
+    H.V = (double*)calloc(nnzH,sizeof(double));
     H.nnz = nnzH;
     
     state_t state;
     state.H = H;
     
-    double *x = calloc(n,sizeof(double));
-    double *s = calloc(n,sizeof(double));
-    double *shat = calloc(n,sizeof(double)); 
+    double *x = (double*)calloc(n,sizeof(double));
+    double *s = (double*)calloc(n,sizeof(double));
+    double *shat = (double*)calloc(n,sizeof(double)); 
     
     //Create the working vectors for the centrality measure
-    double *psi = calloc(n,sizeof(double)); 
-    double *hpsi = calloc(n,sizeof(double)); 
+    double *psi =  (double*)calloc(n,sizeof(double)); 
+    double *hpsi = (double*)calloc(n,sizeof(double)); 
+
     
     //Allocate the space to compress to csr
     int* Hi=(int*)calloc(nnzH,sizeof(int));

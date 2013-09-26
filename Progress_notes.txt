@@ -2,4 +2,10 @@ Presently the code does all the linear algebra in
 
 IMPORTANT TO DOS:
 The criteria for dual feasibility has to be checked 
-Skajaa and Boyd dont match.
+Skajaa and Boyd dont match!
+
+DONE:Change the sign of the residuals so that the argument of the solve_atd_direction matches it
+The variables in state p_relstop, d_relstop, g_relstop, are calculated proportional 
+to the inf norm of [A -b], [A' I -c] and [c',b',1]. We need code to do this
+
+

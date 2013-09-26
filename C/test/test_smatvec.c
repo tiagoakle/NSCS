@@ -4,6 +4,7 @@
 #include "test_util.h"
 #include "test_smatvec.h"
 #include "umfpack.h"
+#include "OpenBlas/cblas.h"
 
 int tn = 5 ;
 csi tAp [ ] = {0, 2, 5, 9, 10, 12} ;
@@ -366,6 +367,93 @@ START_TEST(test_cyclic)
 }
 END_TEST
 
+START_TEST(test_cyclic_coo)
+{
+    csi n = 100000;
+    csi i = 0;
+    double* x = (double*)calloc(n,sizeof(double));
+    double* Hx = (double*)calloc(n,sizeof(double));
+
+    csi* I = (csi*)calloc(n,sizeof(csi));
+    csi* J = (csi*)calloc(n,sizeof(csi));
+    double* V = (double*)calloc(n,sizeof(double));
+
+    for(i=0;i<n-1;i++){ I[i] = i; J[i] = i+1; V[i] = 1.; x[i] = i;}
+    J[n-1] = 0;
+    x[n-1] = n-1;
+    I[n-1] = n-1;
+    
+    dspmvcoo(n,1.0,I,J,V,Hx,x);
+    for(i=0;i<n-1;i++) ck_assert(Hx[i]==x[i+1]);
+    ck_assert(Hx[n-1]==x[0]);
+}
+END_TEST
+
+
+START_TEST(compare_coo_to_blas)
+{
+    csi m = 10;
+    csi n = 100;
+    csi nnz = m*n;
+    csi i,j;
+    double* x = (double*)calloc(n,sizeof(double));
+    double* Hx = (double*)calloc(m,sizeof(double));
+    double* dHx = (double*)calloc(m,sizeof(double));
+
+    double* dA = (double*)calloc(nnz,sizeof(double));
+    csi* I = (csi*)calloc(nnz,sizeof(csi));
+    csi* J = (csi*)calloc(nnz,sizeof(csi));
+    double* V = (double*)calloc(nnz,sizeof(double));
+
+    //Generate random entries for A
+    for(i=0;i<m;i++)
+        for(j=0;j<n;j++)
+        {
+            dA[i+j*m] = rand()/(double)RAND_MAX - 0.5;
+            V[i+j*m] = dA[i+j*m];
+            I[i+j*m] = i;
+            J[i+j*m] = j;
+        }
+
+    dspmvcoo(n,1.0,I,J,V,Hx,x);
+    cblas_dgemv(CblasColMajor,  CblasNoTrans,  m,n, 1., dA, m, x, 1, 0, dHx, 1);
+    for(i=0;i<m;i++) ck_assert(Hx[i]==dHx[i]);
+}
+END_TEST
+
+
+START_TEST(compare_coo_transpose_to_blas)
+{
+    csi m = 10;
+    csi n = 100;
+    csi nnz = m*n;
+    csi i,j;
+    double* y = (double*)calloc(m,sizeof(double));
+    double* Hy = (double*)calloc(n,sizeof(double));
+    double* dHy = (double*)calloc(n,sizeof(double));
+
+    double* dA = (double*)calloc(nnz,sizeof(double));
+    csi* I = (csi*)calloc(nnz,sizeof(csi));
+    csi* J = (csi*)calloc(nnz,sizeof(csi));
+    double* V = (double*)calloc(nnz,sizeof(double));
+
+    //Generate random entries for A
+    for(i=0;i<m;i++)
+        for(j=0;j<n;j++)
+        {
+            dA[i+j*m] = rand()/(double)RAND_MAX - 0.5;
+            V[i+j*m] = dA[i+j*m];
+            I[i+j*m] = i;
+            J[i+j*m] = j;
+        }
+
+    dsptmvcoo(n,1.0,I,J,V,Hy,y);
+    cblas_dgemv(CblasColMajor,  CblasTrans,  m,n, 1., dA, m, y, 1, 0, dHy, 1);
+    for(i=0;i<n;i++) ck_assert(Hy[i]==dHy[i]);
+}
+END_TEST
+
+
 Suite* matvec_suite(void)
 {
     Suite* suite = suite_create("Smatvec");
@@ -378,6 +466,9 @@ Suite* matvec_suite(void)
     tcase_add_test(tc,transpose_product_no_empty_cols);
     tcase_add_test(tc,transpose_product_with_empty_cols);
     tcase_add_test(tc,test_cyclic);
+    tcase_add_test(tc,test_cyclic_coo);
+    tcase_add_test(tc,compare_coo_to_blas);
+    tcase_add_test(tc,compare_coo_transpose_to_blas);
     suite_add_tcase(suite,tc);
     return suite;
 }

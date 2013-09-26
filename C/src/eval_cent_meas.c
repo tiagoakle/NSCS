@@ -1,6 +1,8 @@
 #include "eval_cent_meas.h"
+#include "barriers.h"
 #include "nscs.h"
 #include "stdio.h"
+#include "linear_solvers.h"
 #include "OpenBLAS/cblas.h"
 //Evaluates the centrality measure, returns grad to debug only
 double eval_cent_meas(problem_t prob, double* xa, double* sa, state_t state, double mua, double* psi, double * hpsi)

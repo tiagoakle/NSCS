@@ -50,3 +50,39 @@ void dsTpmv(int m, int n, double alpha, int* pA, int * iA, double* vA, double* y
     }
     
 }
+
+/**
+ * Naive sparse matrix dense vector multiply in coordinate form
+ * y = alpha Ax + y
+ */
+void dspmvcoo(csi nnz, double alpha, int* Ai, int * Aj, double* Av, double* y, double* x)
+{
+    //Direct product 
+    csi i = 0; 
+    //Iterate over all non zeros
+    for(i=0;i<nnz;i++)
+    {
+            y[Ai[i]] += alpha*Av[i]*x[Aj[i]];
+    }
+
+}
+
+/**
+ * Naive sparse Transpose matrix dense vector multiply in coordinate form
+ * y = alpha A'x + y
+ */
+void dsptmvcoo(csi nnz, double alpha, int* Ai, int * Aj, double* Av, double* y, double* x)
+{
+    //Direct product
+    
+    csi i = 0;
+       
+    //Iterate over all non zeros
+    for(i=0;i<nnz;i++)
+    {
+            y[Aj[i]] += alpha*Av[i]*x[Ai[i]];
+    }
+
+}
+
+
