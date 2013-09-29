@@ -89,7 +89,6 @@ int solve_kkt_system_no_structs(int m, int n,\
                                 double* ds,\
                                 double* dk);
 
-void dummy_copy(double* Out, double* In, int n);
 //Builds and solves the 5x5 system
 void eval_hess_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* HI, int* HJ, double* HV);
 void primal_feas_no_structs(csi k_count, csi* nK, int* tK, csi n, double* x, int* feas);
@@ -99,6 +98,7 @@ void eval_cent_meas_no_structs(csi k_count,csi* nK, int* tK, double delta,\
                                double* x, double* s, csi n, csi nnzH, double mua,\
                                double* psi, double * hpsi, double* centmeas);
 
+
 void nscs_no_structs(csi k_count, csi* nK, int* tK,\
                      csi *AI, csi* AJ, double* AV, csi nnzA, csi m, csi n,\
                      double *c, double *b,\
@@ -106,8 +106,18 @@ void nscs_no_structs(csi k_count, csi* nK, int* tK,\
                      int wy, int ws, int wt, int wk,\
                      int max_iter, int max_center_iter, double theta, double lscaff, double lsccent,\
                      double eta, int max_backtrack, double delta, double gamma, double beta,\
-                     double p_relstop, double d_relstop, double rel_gap_relstop, double rho_g,\
+                     double p_relstop, double d_relstop, double rel_gap_relstop,\
+                     double p_rho, double d_rho, double a_rho, double rho_g,\
                      double rhoI, double rhoM);
+
+void calculate_residuals_no_structs(csi* Ai, csi* Aj, double* Av, csi m, csi n, csi nnz,
+                                    double* b, double* c,\
+                                    double* y, double* x, double tau, double* s, double kappa,\
+                                    double p_relstop, double d_relstop, double g_relstop,\
+                                    double* p_res, double* d_res, double* g_res,\
+                                    double* n_p_res, double* n_d_res, double* n_g_res, double* rel_gap);
+ 
+
 #ifdef __cplusplus
 }
 #endif

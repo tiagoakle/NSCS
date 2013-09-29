@@ -47,7 +47,7 @@ LIBOUTDIR=./Lib
 DYLIBFLAGS=-dynamiclib -undefined error 
 
 
-all: $(DYLIB) test
+all: $(DYLIB) test testminent
 
 $(OBJECTDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -g $(IDIRS) -c $< -o $@
@@ -58,12 +58,20 @@ $(OBJECTDIR)/%.o: $(TESTDIR)/%.c
 $(DYLIB): $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS))
 	$(CC) $(DYLIBFLAGS) -g $^ -o $(LIBOUTDIR)/$@ $(LIBDIR) $(LIBS)
 
-test: $(addprefix $(OBJECTDIR)/,$(TESTOBJECTS)) $(addprefix $(OBJECTDIR)/,$(OBJECTS)) $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS)) $(addprefix $(OBJECTDIR)/,$(CPPOBJECTS)) 
+test: $(addprefix $(OBJECTDIR)/,$(TESTOBJECTS))  $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS)) $(addprefix $(OBJECTDIR)/,$(CPPOBJECTS)) 
 	$(CC) -undefined error $^ -g -o testprog $(LIBDIR) $(LIBS) -lcheck
+
+./build/nscs_minentropy.o: ./src/nscs_minentropy.c	
+	$(CC) $(CFLAGS) -g $(IDIRS) -c $< -o $@
+
+testminent: ./build/test_util.o ./build/nscs_minentropy.o  $(addprefix $(OBJECTDIR)/,$(NSCSOBJECTS)) 
+	$(CC) -undefined error $^ -g -o run_minentropy $(LIBDIR) $(LIBS) -lcheck
+
 
 clean:
 	rm $(OBJECTDIR)/*.o
 	rm testprog
+	rm run_minentropy
 	rm $(LIBOUTDIR)/$(DYLIB)
 
 rtest: clean all 

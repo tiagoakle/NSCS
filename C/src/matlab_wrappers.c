@@ -351,7 +351,8 @@ void nscs_no_structs(csi k_count, csi* nK, int* tK,\
                      int wy, int ws, int wt, int wk,\
                      int max_iter, int max_center_iter, double theta, double lscaff, double lsccent,\
                      double eta, int max_backtrack, double delta, double gamma, double beta,\
-                     double p_relstop, double d_relstop, double rel_gap_relstop, double rho_g,\
+                     double p_relstop, double d_relstop, double rel_gap_relstop,\
+                     double p_rho, double d_rho, double a_rho, double rho_g,\
                      double rhoI, double rhoM)
 {
     //Define the structures
@@ -383,6 +384,10 @@ void nscs_no_structs(csi k_count, csi* nK, int* tK,\
     pars.beta             = beta;
     pars.p_relstop        = p_relstop;
     pars.d_relstop        = d_relstop;
+
+    pars.p_rho            = p_rho;
+    pars.d_rho            = d_rho;
+    pars.a_rho            = a_rho;
     pars.rho_g            = rho_g;
     pars.rhoI             = rhoI;
     pars.rhoM             = rhoM;
@@ -391,4 +396,46 @@ void nscs_no_structs(csi k_count, csi* nK, int* tK,\
     nscs(&problem,&pars,y,x,tau,x,kappa,wy,ws,wt,wk);
     
     //int nscs(problem_t* problem, parameters_t* pars, double* y0, double* x0, double* t0, double* s0, double* k0);
+}
+
+void calculate_residuals_no_structs(csi* Ai, csi* Aj, double* Av, csi m, csi n, csi nnz,
+                                    double* b, double* c,\
+                                    double* y, double* x, double tau, double* s, double kappa,\
+                                    double p_relstop, double d_relstop, double g_relstop,\
+                                    double* p_res, double* d_res, double* g_res,\
+                                    double* n_p_res, double* n_d_res, double* n_g_res, double* rel_gap){
+    //Build problem                                
+    spmat A;
+    A.m = m;
+    A.n = n;
+    A.nnz = nnz;
+    A.I = Ai;
+    A.J = Aj;
+    A.V = Av;
+    problem_t prob; 
+    prob.A = A;
+    prob.b = b;
+    prob.c = c;
+    //Build state
+    state_t state;
+    state.d_res = d_res;
+    state.p_res = p_res;
+    
+    state.y = y;
+    state.x = x;
+    state.tau = tau;
+    state.s   = s;
+    state.kappa = kappa;
+    state.p_relstop = p_relstop;
+    state.d_relstop = d_relstop;
+    state.g_relstop = g_relstop;
+   
+    calculate_residuals(&state,&prob);
+    //Fill the return values
+   (*g_res  ) = state.g_res;
+   (*n_p_res) = state.n_p_res;
+   (*n_d_res) = state.n_d_res;
+   (*n_g_res) = state.n_g_res;
+   (*rel_gap) = state.rel_gap;
+    
 }

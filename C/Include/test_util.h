@@ -6,3 +6,6 @@ int write_matrix_to_csv(char* name, int* I, int* J, double* V, int nnz, int m, i
 int write_vector_to_csv(char* name, double* v, int n);
 int read_vector_bin_size(char* fname);
 void read_vector_bin(char* fname, double* x, int n);
+void read_matrix_bin_size(char* fname, int* m, int* n, int* nnz);
+void read_matrix_bin(char* fname, int* Ai, int* Aj, double* Av);
+

@@ -1,0 +1,184 @@
+The system is: Darwin - 12.4.0 - i386
+Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+Compiler: /usr/bin/cc 
+Build flags: 
+Id flags: 
+
+The output was:
+0
+
+
+Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+
+The C compiler identification is Clang, found in "/Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/2.8.10.2/CompilerIdC/a.out"
+
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+Compiler: /usr/bin/c++ 
+Build flags: 
+Id flags: 
+
+The output was:
+0
+
+
+Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "a.out"
+
+The CXX compiler identification is Clang, found in "/Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/2.8.10.2/CompilerIdCXX/a.out"
+
+Determining if the C compiler works passed with the following output:
+Change Dir: /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp
+
+Run Build Command:/usr/bin/make "cmTryCompileExec2289831673/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec2289831673.dir/build.make CMakeFiles/cmTryCompileExec2289831673.dir/build
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_progress_report /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building C object CMakeFiles/cmTryCompileExec2289831673.dir/testCCompiler.c.o
+/usr/bin/cc    -o CMakeFiles/cmTryCompileExec2289831673.dir/testCCompiler.c.o   -c /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp/testCCompiler.c
+Linking C executable cmTryCompileExec2289831673
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec2289831673.dir/link.txt --verbose=1
+/usr/bin/cc      -Wl,-search_paths_first -Wl,-headerpad_max_install_names   CMakeFiles/cmTryCompileExec2289831673.dir/testCCompiler.c.o  -o cmTryCompileExec2289831673  
+
+
+Detecting C compiler ABI info compiled with the following output:
+Change Dir: /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp
+
+Run Build Command:/usr/bin/make "cmTryCompileExec952741479/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec952741479.dir/build.make CMakeFiles/cmTryCompileExec952741479.dir/build
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_progress_report /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building C object CMakeFiles/cmTryCompileExec952741479.dir/CMakeCCompilerABI.c.o
+/usr/bin/cc    -o CMakeFiles/cmTryCompileExec952741479.dir/CMakeCCompilerABI.c.o   -c /usr/local/Cellar/cmake/2.8.10.2/share/cmake/Modules/CMakeCCompilerABI.c
+Linking C executable cmTryCompileExec952741479
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec952741479.dir/link.txt --verbose=1
+/usr/bin/cc      -Wl,-search_paths_first -Wl,-headerpad_max_install_names -v CMakeFiles/cmTryCompileExec952741479.dir/CMakeCCompilerABI.c.o  -o cmTryCompileExec952741479   
+Apple LLVM version 4.2 (clang-425.0.28) (based on LLVM 3.2svn)
+Target: x86_64-apple-darwin12.4.0
+Thread model: posix
+ "/usr/bin/ld" -demangle -dynamic -arch x86_64 -macosx_version_min 10.8.0 -o cmTryCompileExec952741479 -search_paths_first -headerpad_max_install_names CMakeFiles/cmTryCompileExec952741479.dir/CMakeCCompilerABI.c.o -lSystem /usr/bin/../lib/clang/4.2/lib/darwin/libclang_rt.osx.a
+
+
+Parsed C implicit link information from above output:
+  link line regex: [^( *|.*[/\])(ld|ld|collect2)[^/\]*( |$)]
+  ignore line: [Change Dir: /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp]
+  ignore line: []
+  ignore line: [Run Build Command:/usr/bin/make "cmTryCompileExec952741479/fast"]
+  ignore line: [/usr/bin/make -f CMakeFiles/cmTryCompileExec952741479.dir/build.make CMakeFiles/cmTryCompileExec952741479.dir/build]
+  ignore line: [/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_progress_report /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp/CMakeFiles 1]
+  ignore line: [Building C object CMakeFiles/cmTryCompileExec952741479.dir/CMakeCCompilerABI.c.o]
+  ignore line: [/usr/bin/cc    -o CMakeFiles/cmTryCompileExec952741479.dir/CMakeCCompilerABI.c.o   -c /usr/local/Cellar/cmake/2.8.10.2/share/cmake/Modules/CMakeCCompilerABI.c]
+  ignore line: [Linking C executable cmTryCompileExec952741479]
+  ignore line: [/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec952741479.dir/link.txt --verbose=1]
+  ignore line: [/usr/bin/cc      -Wl,-search_paths_first -Wl,-headerpad_max_install_names -v CMakeFiles/cmTryCompileExec952741479.dir/CMakeCCompilerABI.c.o  -o cmTryCompileExec952741479   ]
+  ignore line: [Apple LLVM version 4.2 (clang-425.0.28) (based on LLVM 3.2svn)]
+  ignore line: [Target: x86_64-apple-darwin12.4.0]
+  ignore line: [Thread model: posix]
+  link line: [ "/usr/bin/ld" -demangle -dynamic -arch x86_64 -macosx_version_min 10.8.0 -o cmTryCompileExec952741479 -search_paths_first -headerpad_max_install_names CMakeFiles/cmTryCompileExec952741479.dir/CMakeCCompilerABI.c.o -lSystem /usr/bin/../lib/clang/4.2/lib/darwin/libclang_rt.osx.a]
+    arg [/usr/bin/ld] ==> ignore
+    arg [-demangle] ==> ignore
+    arg [-dynamic] ==> ignore
+    arg [-arch] ==> ignore
+    arg [x86_64] ==> ignore
+    arg [-macosx_version_min] ==> ignore
+    arg [10.8.0] ==> ignore
+    arg [-o] ==> ignore
+    arg [cmTryCompileExec952741479] ==> ignore
+    arg [-search_paths_first] ==> ignore
+    arg [-headerpad_max_install_names] ==> ignore
+    arg [CMakeFiles/cmTryCompileExec952741479.dir/CMakeCCompilerABI.c.o] ==> ignore
+    arg [-lSystem] ==> lib [System]
+    arg [/usr/bin/../lib/clang/4.2/lib/darwin/libclang_rt.osx.a] ==> lib [/usr/bin/../lib/clang/4.2/lib/darwin/libclang_rt.osx.a]
+  remove lib [System]
+  implicit libs: [/usr/bin/../lib/clang/4.2/lib/darwin/libclang_rt.osx.a]
+  implicit dirs: []
+
+
+Determining if the CXX compiler works passed with the following output:
+Change Dir: /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp
+
+Run Build Command:/usr/bin/make "cmTryCompileExec1742182583/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec1742182583.dir/build.make CMakeFiles/cmTryCompileExec1742182583.dir/build
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_progress_report /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building CXX object CMakeFiles/cmTryCompileExec1742182583.dir/testCXXCompiler.cxx.o
+/usr/bin/c++     -o CMakeFiles/cmTryCompileExec1742182583.dir/testCXXCompiler.cxx.o -c /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp/testCXXCompiler.cxx
+Linking CXX executable cmTryCompileExec1742182583
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec1742182583.dir/link.txt --verbose=1
+/usr/bin/c++       -Wl,-search_paths_first -Wl,-headerpad_max_install_names   CMakeFiles/cmTryCompileExec1742182583.dir/testCXXCompiler.cxx.o  -o cmTryCompileExec1742182583  
+
+
+Detecting CXX compiler ABI info compiled with the following output:
+Change Dir: /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp
+
+Run Build Command:/usr/bin/make "cmTryCompileExec2593342158/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec2593342158.dir/build.make CMakeFiles/cmTryCompileExec2593342158.dir/build
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_progress_report /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building CXX object CMakeFiles/cmTryCompileExec2593342158.dir/CMakeCXXCompilerABI.cpp.o
+/usr/bin/c++     -o CMakeFiles/cmTryCompileExec2593342158.dir/CMakeCXXCompilerABI.cpp.o -c /usr/local/Cellar/cmake/2.8.10.2/share/cmake/Modules/CMakeCXXCompilerABI.cpp
+Linking CXX executable cmTryCompileExec2593342158
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec2593342158.dir/link.txt --verbose=1
+/usr/bin/c++       -Wl,-search_paths_first -Wl,-headerpad_max_install_names -v CMakeFiles/cmTryCompileExec2593342158.dir/CMakeCXXCompilerABI.cpp.o  -o cmTryCompileExec2593342158   
+Apple LLVM version 4.2 (clang-425.0.28) (based on LLVM 3.2svn)
+Target: x86_64-apple-darwin12.4.0
+Thread model: posix
+ "/usr/bin/ld" -demangle -dynamic -arch x86_64 -macosx_version_min 10.8.0 -o cmTryCompileExec2593342158 -search_paths_first -headerpad_max_install_names CMakeFiles/cmTryCompileExec2593342158.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lSystem /usr/bin/../lib/clang/4.2/lib/darwin/libclang_rt.osx.a
+
+
+Parsed CXX implicit link information from above output:
+  link line regex: [^( *|.*[/\])(ld|ld|collect2)[^/\]*( |$)]
+  ignore line: [Change Dir: /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp]
+  ignore line: []
+  ignore line: [Run Build Command:/usr/bin/make "cmTryCompileExec2593342158/fast"]
+  ignore line: [/usr/bin/make -f CMakeFiles/cmTryCompileExec2593342158.dir/build.make CMakeFiles/cmTryCompileExec2593342158.dir/build]
+  ignore line: [/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_progress_report /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp/CMakeFiles 1]
+  ignore line: [Building CXX object CMakeFiles/cmTryCompileExec2593342158.dir/CMakeCXXCompilerABI.cpp.o]
+  ignore line: [/usr/bin/c++     -o CMakeFiles/cmTryCompileExec2593342158.dir/CMakeCXXCompilerABI.cpp.o -c /usr/local/Cellar/cmake/2.8.10.2/share/cmake/Modules/CMakeCXXCompilerABI.cpp]
+  ignore line: [Linking CXX executable cmTryCompileExec2593342158]
+  ignore line: [/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec2593342158.dir/link.txt --verbose=1]
+  ignore line: [/usr/bin/c++       -Wl,-search_paths_first -Wl,-headerpad_max_install_names -v CMakeFiles/cmTryCompileExec2593342158.dir/CMakeCXXCompilerABI.cpp.o  -o cmTryCompileExec2593342158   ]
+  ignore line: [Apple LLVM version 4.2 (clang-425.0.28) (based on LLVM 3.2svn)]
+  ignore line: [Target: x86_64-apple-darwin12.4.0]
+  ignore line: [Thread model: posix]
+  link line: [ "/usr/bin/ld" -demangle -dynamic -arch x86_64 -macosx_version_min 10.8.0 -o cmTryCompileExec2593342158 -search_paths_first -headerpad_max_install_names CMakeFiles/cmTryCompileExec2593342158.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lSystem /usr/bin/../lib/clang/4.2/lib/darwin/libclang_rt.osx.a]
+    arg [/usr/bin/ld] ==> ignore
+    arg [-demangle] ==> ignore
+    arg [-dynamic] ==> ignore
+    arg [-arch] ==> ignore
+    arg [x86_64] ==> ignore
+    arg [-macosx_version_min] ==> ignore
+    arg [10.8.0] ==> ignore
+    arg [-o] ==> ignore
+    arg [cmTryCompileExec2593342158] ==> ignore
+    arg [-search_paths_first] ==> ignore
+    arg [-headerpad_max_install_names] ==> ignore
+    arg [CMakeFiles/cmTryCompileExec2593342158.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+    arg [-lstdc++] ==> lib [stdc++]
+    arg [-lSystem] ==> lib [System]
+    arg [/usr/bin/../lib/clang/4.2/lib/darwin/libclang_rt.osx.a] ==> lib [/usr/bin/../lib/clang/4.2/lib/darwin/libclang_rt.osx.a]
+  remove lib [System]
+  implicit libs: [stdc++;/usr/bin/../lib/clang/4.2/lib/darwin/libclang_rt.osx.a]
+  implicit dirs: []
+
+
+Determining if the include file execinfo.h exists passed with the following output:
+Change Dir: /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp
+
+Run Build Command:/usr/bin/make "cmTryCompileExec373534104/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec373534104.dir/build.make CMakeFiles/cmTryCompileExec373534104.dir/build
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_progress_report /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building C object CMakeFiles/cmTryCompileExec373534104.dir/CheckIncludeFile.c.o
+/usr/bin/cc    -o CMakeFiles/cmTryCompileExec373534104.dir/CheckIncludeFile.c.o   -c /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp/CheckIncludeFile.c
+Linking C executable cmTryCompileExec373534104
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec373534104.dir/link.txt --verbose=1
+/usr/bin/cc      -Wl,-search_paths_first -Wl,-headerpad_max_install_names   CMakeFiles/cmTryCompileExec373534104.dir/CheckIncludeFile.c.o  -o cmTryCompileExec373534104  
+
+
+Determining if the function getline exists passed with the following output:
+Change Dir: /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp
+
+Run Build Command:/usr/bin/make "cmTryCompileExec1145583156/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec1145583156.dir/build.make CMakeFiles/cmTryCompileExec1145583156.dir/build
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_progress_report /Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building C object CMakeFiles/cmTryCompileExec1145583156.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=getline   -o CMakeFiles/cmTryCompileExec1145583156.dir/CheckFunctionExists.c.o   -c /usr/local/Cellar/cmake/2.8.10.2/share/cmake/Modules/CheckFunctionExists.c
+Linking C executable cmTryCompileExec1145583156
+/usr/local/Cellar/cmake/2.8.10.2/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec1145583156.dir/link.txt --verbose=1
+/usr/bin/cc     -DCHECK_FUNCTION_EXISTS=getline -Wl,-search_paths_first -Wl,-headerpad_max_install_names   CMakeFiles/cmTryCompileExec1145583156.dir/CheckFunctionExists.c.o  -o cmTryCompileExec1145583156  
+
+

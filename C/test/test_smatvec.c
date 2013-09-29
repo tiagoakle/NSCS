@@ -414,12 +414,68 @@ START_TEST(compare_coo_to_blas)
             I[i+j*m] = i;
             J[i+j*m] = j;
         }
+    //Generate random entries for Hx
+    for(i=0;i<m;i++)
+    {
+        Hx[i] = rand()/(double)RAND_MAX - 0.5;
+        dHx[i] = Hx[i];
+    }
+   
+    //Generate random entries for x
+    for(i=0;i<n;i++) x[i] = rand()/(double)RAND_MAX - 0.5;
 
-    dspmvcoo(n,1.0,I,J,V,Hx,x);
-    cblas_dgemv(CblasColMajor,  CblasNoTrans,  m,n, 1., dA, m, x, 1, 0, dHx, 1);
-    for(i=0;i<m;i++) ck_assert(Hx[i]==dHx[i]);
+    dspmvcoo(nnz,1.0,I,J,V,Hx,x);
+    cblas_dgemv(CblasColMajor,  CblasNoTrans,  m, n, 1., dA, m, x, 1, 1., dHx, 1);
+    
+    //double row_sum;
+    // for(i=0;i<m;i++)
+    // {
+    //    row_sum = 0.;
+    //    for(j=0;j<n;j++)
+    //    {
+    //        row_sum += dA[i+j*m]*x[j];
+    //    }
+    //    Hx[i] += row_sum;
+    //}
+
+    for(i=0;i<m;i++){ ck_assert_msg(fabs(Hx[i]-dHx[i])<1.e-15,"dspmvcoo and blas calculated different results for y = Ax + y");}
 }
 END_TEST
+
+START_TEST(compare_coo_to_blas_2)
+{
+    csi m = 10;
+    csi n = 100;
+    csi nnz = m*n;
+    csi i,j;
+    double* x = (double*)calloc(n,sizeof(double));
+    double* Hx = (double*)calloc(m,sizeof(double));
+    double* dHx = (double*)calloc(m,sizeof(double));
+
+    double* dA = (double*)calloc(nnz,sizeof(double));
+    csi* I = (csi*)calloc(nnz,sizeof(csi));
+    csi* J = (csi*)calloc(nnz,sizeof(csi));
+    double* V = (double*)calloc(nnz,sizeof(double));
+
+    //Generate random entries for A
+    for(i=0;i<m;i++)
+        for(j=0;j<n;j++)
+        {
+            dA[i+j*m] = rand()/(double)RAND_MAX - 0.5;
+            V[i+j*m] = dA[i+j*m];
+            I[i+j*m] = i;
+            J[i+j*m] = j;
+        }
+ 
+    //Generate random entries for x
+    for(i=0;i<n;i++) x[i] = rand()/(double)RAND_MAX - 0.5;
+
+    dspmvcoo(nnz,1.0,I,J,V,Hx,x);
+    cblas_dgemv(CblasColMajor,  CblasNoTrans,  m, n, 1., dA, m, x, 1, 0., dHx, 1);
+    for(i=0;i<m;i++){ ck_assert_msg(Hx[i]==dHx[i],"dspmvcoo and blas calculated different results for y = Ax + 0y");}
+}
+END_TEST
+
 
 
 START_TEST(compare_coo_transpose_to_blas)
@@ -446,10 +502,14 @@ START_TEST(compare_coo_transpose_to_blas)
             I[i+j*m] = i;
             J[i+j*m] = j;
         }
+ 
+    //Generate random entries for y
+    for(i=0;i<m;i++) y[i] = rand()/(double)RAND_MAX - 0.5;
 
-    dsptmvcoo(n,1.0,I,J,V,Hy,y);
+
+    dsptmvcoo(nnz,1.0,I,J,V,Hy,y);
     cblas_dgemv(CblasColMajor,  CblasTrans,  m,n, 1., dA, m, y, 1, 0, dHy, 1);
-    for(i=0;i<n;i++) ck_assert(Hy[i]==dHy[i]);
+    for(i=0;i<n;i++) ck_assert(fabs(Hy[i]-dHy[i])<1e-15);
 }
 END_TEST
 
@@ -468,6 +528,7 @@ Suite* matvec_suite(void)
     tcase_add_test(tc,test_cyclic);
     tcase_add_test(tc,test_cyclic_coo);
     tcase_add_test(tc,compare_coo_to_blas);
+    tcase_add_test(tc,compare_coo_to_blas_2);
     tcase_add_test(tc,compare_coo_transpose_to_blas);
     suite_add_tcase(suite,tc);
     return suite;

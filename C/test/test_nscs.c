@@ -125,7 +125,6 @@ START_TEST(test_calculate_residuals)
     
     allocate_state(&state,&prob);
     
-
     double *s = (double*)calloc(n,sizeof(double));        
     double *x = (double*)calloc(n,sizeof(double));        
     double *y = (double*)calloc(m,sizeof(double));
@@ -210,12 +209,12 @@ START_TEST(test_calculate_residuals)
     calculate_residuals(&state,&prob);
     //Compare the two calculations
     
-    for(i=0;i<n;i++) ck_assert_msg(fmax(dd_res[i] - state.d_res[i],-dd_res[i] + state.d_res[i])<1.e-15,\
+    for(i=0;i<n;i++) ck_assert_msg(fabs(-dd_res[i] + state.d_res[i])<1e-15,\
                                     "Dual residual not equal to blas based calculation: %g, i: %i",\
-                                    fmax(dd_res[i] - state.d_res[i],-dd_res[i] + state.d_res[i]),i);
-    for(i=0;i<m;i++) ck_assert_msg(fmax(dp_res[i] -state.p_res[i],-dp_res[i] + state.p_res[i])<1.e-15,\
+                                    fabs(-dd_res[i] + state.d_res[i]),i);
+    for(i=0;i<m;i++) ck_assert_msg(fabs(-dp_res[i] + state.p_res[i])<1e-15,\
                                     "Primal residual not equal to blas based calculation: %g, i: %i",\
-                                    fmax(dp_res[i] -state.p_res[i],-dp_res[i] + state.p_res[i]),i);
+                                    fabs(-dp_res[i] + state.p_res[i]),i);
     double a_err = fmax(state.g_res-dg_res1,-state.g_res+dg_res1);
     ck_assert_msg(a_err<1.e-15,"Gap residual not equal to blas calculation: abs(err): %g, %g, %g",a_err,state.g_res,dg_res1);
 

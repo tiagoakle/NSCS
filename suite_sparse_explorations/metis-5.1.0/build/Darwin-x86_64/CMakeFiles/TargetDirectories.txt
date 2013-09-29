@@ -1,0 +1,7 @@
+/Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/programs/CMakeFiles/cmpfillin.dir
+/Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/programs/CMakeFiles/gpmetis.dir
+/Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/programs/CMakeFiles/graphchk.dir
+/Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/programs/CMakeFiles/m2gmetis.dir
+/Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/libmetis/CMakeFiles/metis.dir
+/Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/programs/CMakeFiles/mpmetis.dir
+/Users/tiago/NSCS/suite_sparse_explorations/metis-5.1.0/build/Darwin-x86_64/programs/CMakeFiles/ndmetis.dir

@@ -102,6 +102,46 @@ void read_vector_bin(char* fname, double* x, int n)
     if(f)
     {
         fread((void*)x,sizeof(double),n,f);
-    }
+    }else 
+        printf("Unable to open %s \n",fname); 
+    fclose(f);
+}
+
+//Reads the matrices written by the matlab write_vector_bin.m file
+void read_matrix_bin_size(char* fname, int* m, int* n, int* nnz)
+{
+    int size; 
+    FILE* f = fopen(fname,"rb");
+    int read; 
+    if(f)
+    {
+       read =  fread((void*)m,sizeof(int),1,f);
+       if(read!=1){fprintf(stderr,"Unable to read from %s\n",fname);}
+       read =  fread((void*)n,sizeof(int),1,f);
+       if(read!=1){fprintf(stderr,"Unable to read from %s\n",fname);}
+       read =  fread((void*)nnz,sizeof(int),1,f);
+       if(read!=1){fprintf(stderr,"Unable to read from %s\n",fname);}
+    }else 
+        printf("Unable to open %s \n",fname); 
+    fclose(f);
+     
+}
+
+void read_matrix_bin(char* fname, int* Ai, int* Aj, double* Av)
+{
+    int m,n,nnz;
+    FILE* f = fopen(fname,"rb");
+    if(f)
+    {
+        fread((void*)&m,sizeof(int),1,f);
+        fread((void*)&n,sizeof(int),1,f);
+        fread((void*)&nnz,sizeof(int),1,f);
+        fread((void*)Ai,sizeof(int),nnz,f);
+        fread((void*)Aj,sizeof(int),nnz,f);
+        fread((void*)Av,sizeof(double),nnz,f);
+    } else 
+        printf("Unable to open %s \n",fname);
+
     fclose(f); 
 }
+

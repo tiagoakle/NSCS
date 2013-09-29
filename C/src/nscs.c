@@ -54,10 +54,19 @@ int nscs(problem_t* problem, parameters_t* pars,\
     int status;
     
     //Validate the parameters
-    status = validate_pars(problem,pars);
+    status = validate_pars(pars);
     if(status != OK)
     {
         fprintf(stderr,"invalid parameter provided");
+        return status;
+
+    } 
+ 
+    //Validate the problem definition
+    status = validate_problem(problem);
+    if(status != OK)
+    {
+        fprintf(stderr,"invalid problem definition");
         return status;
 
     } 
@@ -81,9 +90,15 @@ int nscs(problem_t* problem, parameters_t* pars,\
         return status;
     }
 
-    //Initialize the residuals
+    //Calculate the residuals
     calculate_residuals(&state,problem);
-   
+
+    //Print the output
+    if(pars->print)
+    { 
+        print_and_log(&state,pars);
+    }
+  
     //Flag that indicates that extra centering steps are needed
     bool do_center;
     int c_iter;
@@ -120,6 +135,7 @@ int nscs(problem_t* problem, parameters_t* pars,\
         //At this point the approximate tangent direction linesearch is finished now 
         //start the centering direction
         c_iter = 0;
+        do_center = true;
         //Run the centering routine
         while(do_center && c_iter < pars->max_center_iter)
         { 
@@ -130,12 +146,12 @@ int nscs(problem_t* problem, parameters_t* pars,\
             status = linesearch_centering(&state , *pars, *problem);
             if(status!=OK)
             {
-               fprintf(stderr,"Approximate tangent direction linesearch failed");
-               free_state(state);
-               return status;
+               fprintf(stderr,"Centering linesearch failed");
+               do_center = false;
+               stop_reason = END_LINESEARCH_FAIL;
             }
             c_iter++;
-
+            //printf("Centering measure %g<%g\n",state.dx_norm,pars->beta);
             //Check if the centering condition is satisfied
             if(state.dx_norm<pars->beta)
             {
@@ -214,21 +230,47 @@ void free_state(state_t state)
 /**
  * Validates the parameters provided by the user
  */
-int validate_pars(problem_t* problem, parameters_t* pars)
+int validate_pars(parameters_t* pars)
 {
-    if(val_range(pars->max_iter,1,1000,"max_iter")!=OK) return INVALID_PARAMETER;
-    if(val_range(pars->max_center_iter,1,1000,"max_center_iter")!=OK) return INVALID_PARAMETER;
-    if(val_range(pars->theta,1,1000,"theta")!=OK) return INVALID_PARAMETER;
-    if(val_range(pars->lscaff,1.e-2,1.-1.e-2,"lscaff")!=OK) return INVALID_PARAMETER;;
-    if(val_range(pars->lsccent,1.e-2,1.-1.e-2,"lsccent")!=OK) return INVALID_PARAMETER;
-    if(val_range(pars->eta,0.5,1.-1.e-10,"eta")!=OK) return INVALID_PARAMETER;
-    if(val_range(pars->beta,0.1,1.-1.e-10,"beta")!=OK) return INVALID_PARAMETER;
-    if(val_range(pars->p_relstop,1.e-16,1.e-5,"p_relstop")!=OK) return INVALID_PARAMETER;
-    if(val_range(pars->d_relstop,1.e-16,1.e-5,"d_relstop")!=OK) return INVALID_PARAMETER;
-    if(val_range(pars->rel_gap_relstop,1.e-16,1.e-5,"rel_gap_relstop")!=OK) return INVALID_PARAMETER;
-    //Check the cones
-    //Check that the cone is defined 
+    if(val_range(pars->max_iter,1,1000,"max_iter")!=OK) return INVALID_ARGUMENT;
+    if(val_range(pars->max_center_iter,1,1000,"max_center_iter")!=OK) return INVALID_ARGUMENT;
+    if(val_range(pars->theta,0.5,1000,"theta")!=OK) return INVALID_ARGUMENT;
+    if(val_range(pars->lscaff,1.e-2,1.-1.e-2,"lscaff")!=OK) return INVALID_ARGUMENT;;
+    if(val_range(pars->lsccent,1.e-2,1.-1.e-2,"lsccent")!=OK) return INVALID_ARGUMENT;
+    if(val_range(pars->eta,0.5,1.-1.e-10,"eta")!=OK) return INVALID_ARGUMENT;
+    if(val_range(pars->beta,0.1,1.-1.e-10,"beta")!=OK) return INVALID_ARGUMENT;
+    if(val_range(pars->p_rho,1.e-16,1.e-4,"p_rho")!=OK) return INVALID_ARGUMENT;
+    if(val_range(pars->d_rho,1.e-16,1.e-4,"d_rho")!=OK) return INVALID_ARGUMENT;
+    if(val_range(pars->a_rho,1.e-16,1.e-4,"a_rho")!=OK) return INVALID_ARGUMENT;
     return VALIDATION_OK;
+}
+
+int validate_problem(problem_t* problem)
+{
+    if(problem->A.I==NULL) return MISSING_ARGUMENT;
+    if(problem->A.J==NULL) return MISSING_ARGUMENT;
+    if(problem->A.V==NULL) return MISSING_ARGUMENT;
+    if(problem->A.m<=0)      return INVALID_ARGUMENT;
+    if(problem->A.n<=0)      return INVALID_ARGUMENT;
+    if(problem->A.nnz<=0)    return INVALID_ARGUMENT;
+
+    //Check that b and c are present
+    if(problem->b==NULL) return MISSING_ARGUMENT;
+    if(problem->c==NULL) return MISSING_ARGUMENT;
+    
+    //Check that tK and nK are assigned
+    if(problem->tK==NULL) return MISSING_ARGUMENT;
+    if(problem->nK==NULL) return MISSING_ARGUMENT;
+    //Validate that k_count is in the range 
+    if(val_range(problem->k_count,1,INFINITY,"k_count")!=OK) return INVALID_ARGUMENT;
+    csi i;
+    for(i=0;i<problem->k_count;i++)
+    {
+       if(val_range(problem->tK[i],0,4,"invalid entry in tK")!=OK)return INVALID_ARGUMENT;
+       if(val_range(problem->nK[i],0,4,"invalid entry in nK")!=OK)return INVALID_ARGUMENT;
+    }
+
+    return OK; 
 }
 
 int val_range(double param, double min, double max, char* name)
@@ -236,7 +278,7 @@ int val_range(double param, double min, double max, char* name)
     if(param<min||param>max)
     { 
         fprintf(stderr,"parameter %s: %g outside range %g, %g",name,param,min,max);
-        return INVALID_PARAMETER;
+        return INVALID_ARGUMENT;
     }
     return OK;
 }
@@ -269,7 +311,15 @@ int allocate_state(state_t* state,problem_t* problem)
 }
 
 /**
- * Calculates the residuals and sets the appropriate 
+ * Calculates the residuals,
+ * sets state.p_res = -Ax+tau*b
+ *      state.d_res = A'y+s-tau*c
+ *      state.g_res = -b'y+c'x+kappa
+ * Calculates 
+ *      state.n_p_res = ||d_res||_inf/d_relstop
+ *      state.n_d_res = ||p_res||_inf/p_relstop
+ *      state.n_g_res = |-b'y+c'x+kappa|/g_relstop
+ *
  * variables in state.
  * @param state pointer to the state structure
  * @param prob  problem definition stucture
@@ -286,6 +336,7 @@ void calculate_residuals(state_t* state, problem_t* prob)
      cblas_dcopy(prob->A.n,state->s,1,state->d_res,1);
      dsptmvcoo(prob->A.nnz,1., prob->A.I, prob->A.J, prob->A.V, state->d_res, state->y);
      cblas_daxpy(prob->A.n,-state->tau,prob->c,1,state->d_res,1);
+
      //Transpose product in coordinate form
 
      //-b'y+c'x+k
@@ -302,9 +353,9 @@ void calculate_residuals(state_t* state, problem_t* prob)
     state->n_p_res = fabs(state->p_res[ix])/state->p_relstop;
     //Relative infinity norm of d_res
     ix = cblas_idamax(prob->A.n,state->d_res,1);
-    state->n_p_res = fabs(state->d_res[ix])/state->d_relstop;
+    state->n_d_res = fabs(state->d_res[ix])/state->d_relstop;
     //Relative infinity norm of 
-    state->n_g_res   = state->g_res/state->g_relstop;
+    state->n_g_res   = fabs(state->g_res)/state->g_relstop;
 
 }
 
@@ -400,7 +451,8 @@ int calculate_centering_direction(state_t *state, problem_t prob, parameters_t* 
  */
 void print_and_log(state_t* state,parameters_t* pars)
 {
-    fprintf(stdout,"%i  %i  %e  %e  %e  %e  %e  %e  %e  %e\n",state->m_iter,state->ncent_iter,state->a,state->mu,state->tau\
+    fprintf(stdout,"%2i  %2i  %.2e  %.2e  %.2e  %.2e  %.2e  %.2e  %.2e  %.2e\n",
+    state->m_iter,state->ncent_iter,state->a,state->mu,state->tau\
                                                              ,state->kappa,state->n_p_res,
                                                              state->n_d_res,state->rel_gap,state->n_g_res);
 }
@@ -410,11 +462,11 @@ void print_and_log(state_t* state,parameters_t* pars)
  */
 void print_header()
 {
-    fprintf(stdout,"======================================\n");
-    fprintf(stdout,"%s  %s  %s  %s  %s  %s  %s  %s  %s  %s\n",
-    "iter","center","a","mu","tau",\
+    fprintf(stdout,"==================================================================================================\n");
+    fprintf(stdout,"%s  %s    %s         %s      %s      %s      %s      %s     %s         %s         \n",
+    "it","ce","a","mu","tau",\
     "kappa","p_res","d_res","rel_gap","g_res");
-    fprintf(stdout,"======================================\n");
+    fprintf(stdout,"--------------------------------------------------------------------------------------------------\n");
 }
 
 void print_final(int stop_reason)
@@ -440,17 +492,23 @@ void print_final(int stop_reason)
         case END_MAX_CENTER_ITER:
             reason = "Max number of center iterations reached"; 
         break;
+        case END_LINESEARCH_FAIL:
+            reason = "Linesearch fail";
+        default:
+            reason = "unknown";
+        break;
     }
     fprintf(stdout,"======================================\n");
+    fprintf(stdout,"Finished because %s\n",reason);
 }
 
 //Check stopping criteria
 int check_stopping_criteria(state_t *state,parameters_t* pars, problem_t* prob)
 {
     //Check if all the residuals are smaller than the tolearances
-    if(state->n_p_res<pars->p_relstop)
-        if(state->n_d_res<pars->d_relstop)
-            if(state->rel_gap<pars->rel_gap_relstop) //Optimal solution
+    if(state->n_p_res<pars->p_rho)
+        if(state->n_d_res<pars->d_rho)
+            if(state->rel_gap<pars->a_rho) //Optimal solution
             {
                return END_OPTIMAL; 
             }
@@ -499,6 +557,8 @@ int check_stopping_criteria(state_t *state,parameters_t* pars, problem_t* prob)
         {
             return END_ILL_POSED;
         }
+
+   return END_CONTINUE;
 }
 
 /**
@@ -532,19 +592,19 @@ int init(problem_t* prob, state_t *state, parameters_t *pars, double* y0, double
 
     //Define the initial point,
     //all the fields must be initialized, since they will be used as working vectors
-    if(x0==NULL){ fprintf(stderr,"Initial point not provided \n"); return INVALID_PARAMETER;}
-    if(y0==NULL){ fprintf(stderr,"Initial y has to be allocated \n"); return INVALID_PARAMETER;}
-    if(s0==NULL){ fprintf(stderr,"Initial s has to be allocated \n"); return INVALID_PARAMETER;}
-    if(t0==NULL){ fprintf(stderr,"Initial tau has to be allocated \n"); return INVALID_PARAMETER;}
-    if(k0==NULL){ fprintf(stderr,"Initial kappa has to be allocated \n"); return INVALID_PARAMETER;}
+    if(x0==NULL){ fprintf(stderr,"Initial point not provided \n"); return INVALID_ARGUMENT;}
+    if(y0==NULL){ fprintf(stderr,"Initial y has to be allocated \n"); return INVALID_ARGUMENT;}
+    if(s0==NULL){ fprintf(stderr,"Initial s has to be allocated \n"); return INVALID_ARGUMENT;}
+    if(t0==NULL){ fprintf(stderr,"Initial tau has to be allocated \n"); return INVALID_ARGUMENT;}
+    if(k0==NULL){ fprintf(stderr,"Initial kappa has to be allocated \n"); return INVALID_ARGUMENT;}
 
     //Check if the primal is feasible
-    if(!primal_feas(*prob,x0)){ fprintf(stderr,"Initial point not primal feasible\n"); return INVALID_PARAMETER;}
+    if(!primal_feas(*prob,x0)){ fprintf(stderr,"Initial point not primal feasible\n"); return INVALID_ARGUMENT;}
     //Check the dual is feasible if provided
-    if(ws&&!dual_feas(*prob,s0)){ fprintf(stderr,"Initial dual not feasible\n"); return INVALID_PARAMETER;}
+    if(ws&&!dual_feas(*prob,s0)){ fprintf(stderr,"Initial dual not feasible\n"); return INVALID_ARGUMENT;}
     //Check tau and kappa if provided
-    if(wk&&*k0>0){ fprintf(stderr,"Initial kappa must be positive\n"); return INVALID_PARAMETER;}
-    if(wt&&*t0>0){ fprintf(stderr,"Initial tau   must be positive\n"); return INVALID_PARAMETER;} 
+    if(wk&&*k0>0){ fprintf(stderr,"Initial kappa must be positive\n"); return INVALID_ARGUMENT;}
+    if(wt&&*t0>0){ fprintf(stderr,"Initial tau   must be positive\n"); return INVALID_ARGUMENT;} 
     //complete the inital point
     state->x = x0;
     state->s = s0;
@@ -631,6 +691,12 @@ int init(problem_t* prob, state_t *state, parameters_t *pars, double* y0, double
     //Copy the regularization parameters from parameters to problem
     prob->delta = pars->delta;
     prob->gamma = pars->gamma;
+    //Copy these to state
+  state->p_relstop = pars->p_relstop;
+  state->d_relstop = pars->d_relstop;
+  state->g_relstop = pars->g_relstop;
+
+
     
     return OK;
 }

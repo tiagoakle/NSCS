@@ -20,7 +20,7 @@
 #define VALIDATION_OK 0
 #define VALIDATION_ERROR 1
 #define BACKTRACK_FAIL 2
-#define INVALID_PARAMETER 3
+#define INVALID_ARGUMENT 3
 #define MISSING_ARGUMENT 4
 
 //Other errors
@@ -35,5 +35,6 @@
 #define END_D_INFEAS  24
 #define END_MAX_CENTER_ITER 25
 #define END_MAX_ITER 26
+#define END_LINESEARCH_FAIL 27
 
 #endif

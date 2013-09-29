@@ -128,19 +128,25 @@ typedef struct
     double beta;
     
     //Stopping parameters
-    double p_relstop;
-    double d_relstop;
-    double rel_gap_relstop;
+    double p_rho;
+    double d_rho;
+    double a_rho;
     double rho_g;
     double rhoI;
     double rhoM;
+
+   //XXX:These should go when we calculate the scaling for the relative residual norms 
+   //Relative stop parameters copied to state by init
+   double p_relstop;
+   double d_relstop;
+   double g_relstop;
+
 
 } parameters_t;
 
 int nscs(problem_t* problem, parameters_t* pars,\
         double* y, double* x, double* t, double* s, double* k, bool wy, bool wt, bool ws, bool wk);
 void free_state(state_t state);
-int validate_pars(problem_t* problem, parameters_t* pars);
 int allocate_state(state_t* state,problem_t* problem);
 int  solve_approximate_tangent_direction(state_t *state,problem_t prob,parameters_t pars);
 bool check_centering_condition(state_t *state, parameters_t* pars);
@@ -153,4 +159,6 @@ void calculate_residuals(state_t* state, problem_t* prob);
 int val_range(double param, double min, double max, char* name);
 int init(problem_t* prob, state_t *state, parameters_t *pars, double* y0,\
         double* x0, double* t0, double* s0, double* k0, bool wy, bool wt, bool ws, bool wk);
+int validate_pars(parameters_t* pars);
+int validate_problem(problem_t* problem);
 #endif

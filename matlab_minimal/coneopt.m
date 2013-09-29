@@ -6,6 +6,7 @@ function R = coneopt(varargin)
 addpath '../C/interface'  %Add the diretory with the interface m files
 addpath '../C/test'
 load_c_library()
+key = true; %Debug
 
 while true
     
@@ -78,6 +79,8 @@ while true
     sa = v.s + c_a*v.ds;
     taua = v.tau+c_a*v.dtau;
     kappaa = v.kappa+c_a*v.kappa;
+
+%    v.a, nbisections
 %    end
 
 %    % set intial step length 
@@ -224,19 +227,36 @@ while true
     % "feas" measure, see Sturm:
     v.feas  = v.dtauaff/v.tauprev - v.dkappaaff/v.kappaprev;
 
-    %Update the residuals
-    bty  = pars.b'*v.y;
-    ctx  = pars.c'*v.x;    
-    v.rA = abs( ctx - bty )/( v.tau + abs(bty) );
+   % %Update the residuals
+   % bty  = pars.b'*v.y;
+   % ctx  = pars.c'*v.x;    
+   % v.rA = abs( ctx - bty )/( v.tau + abs(bty) );
+   % 
+   % v.rP = (pars.A*v.x - pars.b*v.tau);
+   % v.rD = (-pars.A'*v.y - v.s + pars.c*v.tau);
+   % v.rG = (-ctx + bty - v.kappa);
+   % 
+   % v.rPrel = norm( v.rP, 'inf')/pars.relstopP;
+   % v.rDrel = norm( v.rD, 'inf')/pars.relstopD;
+   % v.rGrel = norm( v.rG, 'inf')/pars.relstopG;
+   % v.rArel = v.rA; 
     
-    v.rP = (pars.A*v.x - pars.b*v.tau);
-    v.rD = (-pars.A'*v.y - v.s + pars.c*v.tau);
-    v.rG = (-ctx + bty - v.kappa);
+    %Evaluate the c residuals function
+    [p_res,d_res,g_res,n_p_res,n_d_res,n_g_res,rel_gap] = build_residuals_c(K,v.y,v.x,v.s,v.tau,v.kappa,pars.A,pars.b,pars.c,pars.relstopP,pars.relstopD,pars.relstopG);
+
+    %Update the residuals   
+    v.rA = rel_gap;
     
-    v.rPrel = norm( v.rP, 'inf')/pars.relstopP;
-    v.rDrel = norm( v.rD, 'inf')/pars.relstopD;
-    v.rGrel = norm( v.rG, 'inf')/pars.relstopG;
+    v.rP = -p_res;
+    v.rD = -d_res;
+    v.rG = -g_res;
+    
+    v.rPrel = n_p_res;
+    v.rDrel = n_d_res;
+    v.rGrel = n_g_res;
     v.rArel = v.rA; 
+   
+    
     %------------------------ End of backtracking linesearch  ------------
 
     R       = checkstopcrit(v,pars,R);   % check stopping crits
