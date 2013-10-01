@@ -2,8 +2,6 @@ function R = coneopt(varargin)
 
 [v,K,pars,R]  = init(varargin{:});
 
-addpath '../C/interface'  %Add the diretory with the interface m files
-load_c_library()
 
 while true
     
@@ -45,4 +43,3 @@ end
 [v,K,pars,R]  = deinit(v,K,pars,R);
 printfunc('final',v,K,pars,R);
 
-unload_c_library()
