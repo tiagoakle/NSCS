@@ -1,5 +1,5 @@
 %NSCS matlab minimal version
-
+addpath '../coneopt/'
 clear all
 clc
 %Require
@@ -63,29 +63,29 @@ clear 'm' 'n' 'nf' 'nc' 'A' 'b' 'c' 'x';
 %--------- End of problem definition -------------
 
 %Set up the default parameters
-    pars.max_iter   = 30;
-    pars.max_affine_backtrack_iter = 100;
-    pars.max_centering_backtrack_iter = 100;
-    pars.max_c_iter = 20;
-    pars.backtrack_affine_constant = 0.5;
+    pars.max_iter   = 40;
+    pars.max_affine_backtrack_iter = 300;
+    pars.max_centering_backtrack_iter = 300;
+    pars.max_c_iter = 50;
+    pars.backtrack_affine_constant = 0.94;
     pars.backtrack_centering_constant = 0.5;
-    pars.beta       = 0.9;
+    pars.beta       = 0.2;
     pars.theta      = 0.8;
-    pars.large_neighborhood = 1.001;
-    pars.eta        = 0.995;
+    pars.eta        = 0.9995;
     pars.use_nesterov_todd_centering = false;
-    pars.stop_primal= 1e-10;
-    pars.stop_dual  = 1e-10;
-    pars.stop_gap   = 1e-10;
+    pars.stop_primal= 1e-5;
+    pars.stop_dual  = 1e-5;
+    pars.stop_gap   = 1e-5;
 
-%initialize the state
-state = struct;
-state.xc = x0c;
-state.xf = x0f;
+    pars.print      = 1;
 
 %------------------------------------------------
 % Validate problem input and initialize the state
 %------------------------------------------------
+
+state = struct;
+state.xc = x0c;
+state.xf = x0f;
 
 %Make sure the number of constraints adds to p;
 tot_constraints = problem.n_free+problem.n_pos+sum(problem.soc_cones)+sum(problem.sdp_cones)+...
@@ -108,11 +108,11 @@ end
 %----------------------------------------------
 % Print the header
 %-----------------------------------------------
-fprintf('%2s  %2s  %6s   %6s     %6s     %6s       %6s     %6s     %6s\n',...
+fprintf('%2s  %2s  %6s   %6s     %6s     %6s       %6s       %6s     %6s     %6s\n',...
                          'it','cit',...
                          'a_a','mu',...
                          'tau','kap',...
-                         'p_res','d_res','g_res');
+                         'p_res','d_res','rel_gap','g_res');
 
 
 
@@ -132,6 +132,10 @@ state.nu = problem.n_pos+problem.n_soc_cones*2;
 state.nu = state.nu + sum(problem.sdp_cones);
 state.nu = state.nu + problem.n_exp_cones*3+problem.n_power_cones*3;
 
+%Allocate the space for the working vectors
+state.temp1 = zeros(problem.n_constrained,1);
+state.temp2 = zeros(problem.n_constrained,1);
+
 % Complete the starting point
 state.y  = ones(problem.m,1);
 state.s  = ones(problem.n_constrained,1);
@@ -139,10 +143,6 @@ state.xf = x0f;
 state.xc = x0c;
 state.tau = 1;
 state.kappa = 1;
-
-%Allocate the space for the working vectors
-state.temp1 = zeros(problem.n_constrained,1);
-state.temp2 = zeros(problem.n_constrained,1);
 
 %Caclculate a feasible centered dual slack
 state.temp1  = eval_grad(problem,state.xc);
@@ -155,14 +155,15 @@ state.s      = state.s-(qtx/(vtx+1))*state.temp1;
 %Calculate the initial centrality
  dga        = state.xc'*state.s+state.kappa*state.tau;
  mua        = dga/(state.nu+1);
-
-state.mu    = mua;
+ state.mu    = mua;
 
 %initialize some counters
 state.c_iter = 0;
 state.m_iter = 0;
 state.b_iter = 0;
 state.c_backtrack_iter = 0;
+state.kkt_solves = 0;
+state.centering_iterations = 0;
 
 %Shorthand symbols
 n           = problem.n;
@@ -170,36 +171,42 @@ nc          = problem.n_constrained;
 nf          = problem.n_free;
 m           = problem.m;
 
-%Allocate space for the residuals
+%Allocate space for the residuals and calculate them
 state.p_res         =  problem.b*state.tau-problem.A*[state.xf;state.xc];
 state.d_res         = -problem.c*state.tau+problem.A'*state.y;
 state.d_res(nf+1:n) = state.d_res(nf+1:n) + state.s;
 state.g_res         = - problem.b'*state.y  + problem.c(1:nf)'*state.xf+problem.c(nf+1:n)'*state.xc + state.kappa; 
+
+ctx                 = problem.c(problem.n_free+1:problem.n)'*state.xc;
+bty                 = problem.b'*state.y;
+state.relative_gap  = abs( ctx - bty )/( state.tau + abs(bty) );
+
+
 %Calculate the residual norms
 state.n_p_res       = norm(state.p_res,'inf')/state.rel_p_res;
 state.n_d_res       = norm(state.p_res,'inf')/state.rel_d_res;
 state.n_g_res       = abs(state.g_res)/state.rel_g_res;;
 
 %Print the iteration log
-%iter centering iter, 
-fprintf('%2i  %2i  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e\n',...
+fprintf('%2i  %2i  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e   %3.3e\n',...
                      state.m_iter,state.c_iter,...
                      0,state.mu,...
                      state.tau,state.kappa,...
-                     state.n_p_res,state.n_d_res,state.n_g_res);
+                     state.n_p_res,state.n_d_res,state.relative_gap,state.n_g_res);
 
 
 %-----------------------------------------------
 %Start of the major iteration
 %-----------------------------------------------
 m_iter = 0;
-for m_iter = 0:pars.max_iter
+for m_iter = 1:pars.max_iter
    
     state.m_iter = m_iter;
-    %Build the linear system for the atd direction
-    %------------------------------------------
-     
-    %Calculate the hessian
+
+    %Build the system for the tangent direction
+    %------------------------------------------------- 
+    
+    %Evaluate the hessian either at X or at the centering point
     if(pars.use_nesterov_todd_centering)
         %If Nesterov Todd centering is enabled
         %Caclulate the hessians at the nt scaling points 
@@ -214,19 +221,20 @@ for m_iter = 0:pars.max_iter
     nc = problem.n_constrained;
     nf = problem.n_free;
 
-    %Build the system matrix
-    Sc  = -[sparse(nf,nc);speye(nc)];
-    K5= [[sparse(m,m) , problem.A                         ,-problem.b     ,sparse(m,nc)  ,sparse(m,1)];...
-         [-problem.A' , sparse(n,n)                       ,problem.c      ,Sc           ,sparse(n,1)];...
-         [problem.b'  , -problem.c'                       ,sparse(1,1)    ,sparse(1,nc)  ,-1         ];...
-         [sparse(nc,m), sparse(nc,nf) ,sparse(state.mu*H) ,sparse(nc,1)   ,speye(nc,nc)  ,sparse(nc,1)];...
-         [sparse(1,m) , sparse(1,n)                       ,state.kappa    ,sparse(1,nc)  ,state.tau   ]];
-          
+    %Assemble the matrix
+    Sc  = [sparse(nf,nc);-speye(nc)];
+    K5= [[sparse(m,m) , problem.A                           ,-problem.b     ,sparse(m,nc)  ,sparse(m,1)];...
+         [-problem.A' , sparse(n,n)                         ,problem.c      ,Sc            ,sparse(n,1)];...
+         [problem.b'  , -problem.c'                         ,sparse(1,1)    ,sparse(1,nc)  ,-1         ];...
+         [sparse(nc,m), [sparse(nc,nf) ,sparse(state.mu*H)] ,sparse(nc,1)   ,speye(nc,nc)  ,sparse(nc,1)];...
+         [sparse(1,m) , sparse(1,n)                         ,state.kappa    ,sparse(1,nc)  ,state.tau   ]];
+     
           
     %Build the rhs
     rhs = [state.p_res;state.d_res;state.g_res;-state.s;-state.tau*state.kappa];  
 
-    %Solve for the direction (The magic of UMFPACK)
+    %Solve for the direction
+    %----------------------------------------------------------
     state.d       = K5\rhs;
     state.dy      = state.d(1:m);
     state.dxf     = state.d(m+1:m+nf);
@@ -234,8 +242,14 @@ for m_iter = 0:pars.max_iter
     state.dtau    = state.d(m+n+1);
     state.ds      = state.d(m+n+2:m+n+nc+1);
     state.dkappa  = state.d(m+n+nc+2);
+   
+    %Count the solution
+    state.kkt_solves = state.kkt_solves + 1; 
+
+
 
     clear 'K5' 'rhs' 'state.d'
+    
     %  Start of the approximate tangent direction linesearch
     %----------------------------------------------------------
     state.a_affine  = 1.0;
@@ -280,23 +294,24 @@ for m_iter = 0:pars.max_iter
                 state.temp2 = H\state.temp1;
                 state.cent  = sqrt(state.temp1'*state.temp2);
 
-                %XXX: DEBUG
-                fprintf('B_iter %i, Cent %g large_neigh*mu*theta: %g\n',b_iter,state.cent,pars.large_neighborhood*mua*pars.theta);
-                
-                if(state.cent <= pars.large_neighborhood*mua*pars.theta) %Stop when this is satisfied
+                if(pars.print>8) fprintf('Bk %i ||s+mg||_H^- at affine backtrack %g,  mua*theta %g \n',b_iter, state.cent,mua*pars.theta); end
+
+                if(state.cent <= mua*pars.theta) %Stop when this is satisfied
                     break;
                 end
             else
-                %not dual infeasible
+                %not dual infeasible 
+                if(pars.print>8) fprintf('Bk %i Dual infeasible at affine backtrack \n',b_iter); end
             end
         else
             %not primal infeasible 
+                if(pars.print>8) fprintf('Bk %i Primal infeasible at affine backtrack \n',b_iter); end
         end 
         state.a_affine  = state.a_affine*pars.backtrack_affine_constant;
     end %End of backtrack loop
 
     %If the maximum number of iterates was reached report an error and exit
-    if(state.cent > pars.large_neighborhood*mua*pars.theta)
+    if(state.cent > mua*pars.theta)
         fprintf('Backtracking line search failed is backtrack_affine_constant too large?\n');
         state.exit_reason = 'affine backtrack line search fail';
         break;
@@ -310,52 +325,60 @@ for m_iter = 0:pars.max_iter
     state.s     = sa;
     state.kappa = kappaa;
     state.mu    = mua;
-   
+
     clear 'ya' 'xaf' 'xac' 'taua' 'sa' 'kappaa' 'mua'
+
+
     %          Centering process
     %----------------------------------------------------------
-    fprintf('Cent before centering: %g mu: %g large_neigh*mu*theta %g\n',state.cent,state.mu,...
-    state.mu*pars.theta*pars.large_neighborhood);    
+    if(pars.print>8) fprintf('||s+mg||_H^- before centering : %g\n',state.cent); end
 
-     for c_iter = 1:pars.max_c_iter
-       state.c_iter = c_iter;
+    for c_iter = 1:pars.max_c_iter
+        state.c_iter = c_iter;
+        state.centering_iterations = state.centering_iterations +1;
         %Evaluate the gradient and hessian
         state.g = eval_grad(problem,state.xc);
         H       = eval_hessian(problem,state.xc);
+
+        %Evaluate the centering condition
+        state.temp1 = state.s+state.mu*state.g;
+        state.temp2 = H\state.temp1;
+        state.cent  = sqrt(state.temp1'*state.temp2);
+ 
 
         %Build the system matrix
         Sc  = -[sparse(nf,nc);speye(nc)];
         K5= [[sparse(m,m) , problem.A                         ,-problem.b     ,sparse(m,nc)  ,sparse(m,1)];...
              [-problem.A' , sparse(n,n)                       ,problem.c      ,Sc           ,sparse(n,1)];...
              [problem.b'  , -problem.c'                       ,sparse(1,1)    ,sparse(1,nc)  ,-1         ];...
-             [sparse(nc,m), sparse(nc,nf) ,sparse(state.mu*H) ,sparse(nc,1)   ,-speye(nc,nc)  ,sparse(nc,1)];...
+             [sparse(nc,m), sparse(nc,nf) ,sparse(state.mu*H) ,sparse(nc,1)   ,speye(nc,nc)  ,sparse(nc,1)];...
              [sparse(1,m) , sparse(1,n)                       ,state.kappa    ,sparse(1,nc)  ,state.tau   ]];
-        
-        
-        %Evaluate the centering condition
-        state.temp1 = state.s+state.mu*state.g;
-%XXX DEBUG
-        state.cent2norm = norm(state.temp1);
-%END DEBUG
-        state.temp2 = H\state.temp1;
-        state.cent  = sqrt(state.temp1'*state.temp2);
+               
       
-   
         %Build the rhs
         rhs                 = zeros(n+m+nc+2,1);
         rhs(m+n+2:m+n+1+nc) = -state.s-state.mu*state.g;
         rhs(m+n+nc+2)       = state.mu - state.tau*state.kappa;
 
         %Solve for the direction 
-        state.d    = K5\rhs;
-        state.dy   = state.d(1:m);
-        state.dxf  = state.d(m+1:m+nf);
-        state.dxc  = state.d(m+nf+1:m+n);
-        state.dtau = state.d(m+n+1);
-        state.ds   = state.d(m+n+2:m+n+nc+1);
-        state.dk   = state.d(m+n+nc+2);
-        
+        state.d        = K5\rhs;
+        state.dy       = state.d(1:m);
+        state.dxf      = state.d(m+1:m+nf);
+        state.dxc      = state.d(m+nf+1:m+n);
+        state.dtau     = state.d(m+n+1);
+        state.ds       = state.d(m+n+2:m+n+nc+1);
+        state.dkappa   = state.d(m+n+nc+2);
+
+        %Count the solution
+        state.kkt_solves = state.kkt_solves + 1; 
+
+        %Calculate ||dx||_H(X)
+        state.n_x_H = sqrt(state.dxc'*rhs(m+n+2:m+n+1+nc)/state.mu); %This is a cheaper way to do it rhs(m+n+2:m+n+1+nc) = -s-mu*g 
+
+        if(pars.print > 9) fprintf('\t ||dx||_H before cent backtrack : %g\n',state.n_x_H); end
+
         %Centering backtrack 
+        %----------------------------------------------------------------------
         state.a_cent  = 1.0;
         %Find the largest step to the boundary of tau, kappa 
         % backtrack until the centering measure is smaller than mu*pars.theta
@@ -366,13 +389,13 @@ for m_iter = 0:pars.max_iter
         if(state.dkappa<0)
             state.a_cent = min(state.a_cent,-state.kappa/state.dkappa);
         end
-        
+         
         %Take a multiple of the maximum length
         state.a_cent = state.a_cent*pars.eta;
-        %state.cent = Inf;
+ 
+        if(pars.print > 9) fprintf('\t ||s+mg||_H^- before cent backtrack : %g\n',state.cent); end
+        
         %Backtracking iteration
-
-        %fprintf('Centrality at bck: %g\n',state.cent);    
         c_backtrack_iter = 0;
         for c_backtrack_iter = 1:pars.max_centering_backtrack_iter
             state.c_backtrack_iter = c_backtrack_iter;
@@ -382,29 +405,19 @@ for m_iter = 0:pars.max_iter
             taua       = state.tau       + state.a_cent*state.dtau;
             sa         = state.s         + state.a_cent*state.ds;
             kappaa     = state.kappa     + state.a_cent*state.dkappa;
-            
-            %Calculate mu and the duality gap at the trial point
-            dga        = xca'*sa+kappaa*taua;
-            mua        = dga/(state.nu+1);
-           
+                      
             %Evaluate the centrality measure ||sa+mua*g(xa)||_H^{-1}(xa)
             H           = eval_hessian(problem,xca);
             state.g     = eval_grad(problem,xca); %we can save this with a product..
-            state.temp1 = sa+mua*state.g;
+            
+            %Observe that mu is not the value of xca'sa + taua*kappaa but the value 
+            % of mu before centering starts
+            state.temp1 = sa+state.mu*state.g;
             state.temp2 = H\state.temp1;
             cent        = sqrt(state.temp1'*state.temp2);
             
-            %XXX DEBUG
-            cent2norm   = norm(state.temp1);
-            if(m_iter == 1)
-                if(~exist('logs','var'))
-                    logs = zeros(pars.max_centering_backtrack_iter,3);
-                end  
-                    logs(c_backtrack_iter,1) = state.a_cent;
-                    logs(c_backtrack_iter,2) = cent;
-                    logs(c_backtrack_iter,3) = cent2norm;
-            end
-            %END DEBUG 
+            if(pars.print >10) fprintf('\t \t ||s+mg||_H^- at backtrack : %g, %i \n',state.cent,c_backtrack_iter); end
+            
             if(cent < state.cent) %Accept the step if it decreases the centrality... 
             %XXX: add an armijo criteria to this??
                 state.cent = cent;
@@ -412,7 +425,7 @@ for m_iter = 0:pars.max_iter
             else
                 state.a_cent = state.a_cent*pars.backtrack_centering_constant;
             end
-                     
+          
         end %End of backtracking iteration
 
         state.y     = state.y         + state.a_cent*state.dy;
@@ -421,25 +434,24 @@ for m_iter = 0:pars.max_iter
         state.tau   = state.tau       + state.a_cent*state.dtau;
         state.s     = state.s         + state.a_cent*state.ds;
         state.kappa = state.kappa     + state.a_cent*state.dkappa;
-        state.mu    = mua;
+        %XXX
+        %state.mu    = mua;
         
-        %fprintf('Cent iter :%i bkt %i, centrality %g \n',c_iter, state.c_backtrack_iter,state.cent)
-
-        if(state.cent <= mua*pars.theta) %Stop when the centering measure is smaller than beta
+        if(pars.print > 9) fprintf('\t ||s+mg||_H^- at end of backtrack %g backtracks %i centering iter %i\n',state.cent,c_backtrack_iter,c_iter); end
+      
+        if(state.n_x_H <= pars.beta) %Stop centering when the centering measure ||dx||_H is smaller than beta
             break;
         end
 
   end %End of centering iteration
+  if(pars.print > 9) fprintf('||s+mg||_H^- at end of centering : %g, main iter %i\n',state.cent,m_iter); end
  
   %Check if the centering iteration failed   
-  if(state.cent > state.mu*pars.theta)
+  if(state.n_x_H > pars.beta)
         fprintf('Centering failed \n');
         state.exit_reason = 'Centering fail';
         break; 
   end
-
-  fprintf('Cent after centering: %g mu: %g large_neigh*mu*theta %g\n',state.cent,state.mu,...
-    state.mu*pars.theta*pars.large_neighborhood);    
 
     %Calculate the residuals
     state.p_res         =  problem.b*state.tau-problem.A*[state.xf;state.xc];
@@ -451,15 +463,20 @@ for m_iter = 0:pars.max_iter
     %Calculate the residual norms
     state.n_p_res       = norm(state.p_res,'inf')/state.rel_p_res;
     state.n_d_res       = norm(state.p_res,'inf')/state.rel_d_res;
-    state.n_g_res       = abs(state.g_res)/state.rel_g_res;;
+    state.n_g_res       = abs(state.g_res)/state.rel_g_res;
+
+    ctx                 = problem.c(problem.n_free+1:problem.n)'*state.xc;
+    bty                 = problem.b'*state.y;
+    state.relative_gap  = abs( ctx - bty )/( state.tau + abs(bty) );
 
     %Print the iteration log
     %iter centering iter, 
-    fprintf('%2i  %2i  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e\n',...
+    fprintf('%2i  %2i  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e   %3.3e\n',...
                          state.m_iter,state.c_iter,...
                          state.a_affine,state.mu,...
                          state.tau,state.kappa,...
-                         state.n_p_res,state.n_d_res,state.n_g_res);
+                         state.n_p_res,state.n_d_res,...
+                         state.relative_gap,state.n_g_res);
 
     %Evaluate the stopping criteria
     if(state.n_p_res < pars.stop_primal && state.n_p_res < pars.stop_dual && state.n_g_res < pars.stop_gap)
@@ -473,8 +490,12 @@ for m_iter = 0:pars.max_iter
         end
         break;
     end
- 
-
+   
 end %End of main loop
+ 
+    %Print the final message
+    fprintf('==========================================================================================\n');
+    fprintf('Exit because %s \n Iterations %i\n Centering Iterations %i\n Number of KKT Solves %i\n', state.exit_reason, state.m_iter,...
+            state.centering_iterations,state.kkt_solves);
 
 

@@ -291,6 +291,7 @@ while true
             rs.r2 = zeros(size(pars.A,2),1);
             rs.r3 = 0;
             rs.r4 = v.mu   - (v.tau*v.kappa);
+            keyboard
             rs.r5 = - v.s-v.mu*v.F{2}; %        - (-pars.A'*v.y + v.mu*v.F{2} + v.tau*pars.c);
          
             % compute the centering measure at the present point

@@ -11,12 +11,8 @@ r5  = rs.r5;
 %ck = v.mu*(1/v.kappa);
 ck = v.tau;
 
-
-[d,v.CF] = solve_linear_system(v.F{3},v.mu,pars.A,pars.b,pars.c,v.tau,v.kappa,...
-         r1,r2,r3,r4,r5,pars);
-
-%[d,v.CF] = slvhomkkt(v.F{3},v.mu,pars.A,pars.b,pars.c,ck,v.kappa,...
-%    r1,r2,r3,r4,r5,pars);
+[d,v.CF] = slvhomkkt(v.F{3},v.mu,pars.A,pars.b,pars.c,ck,v.kappa,...
+    r1,r2,r3,r4,r5,pars);
 
 if d{6} > 0
     R.status = 'rounding (cent)';

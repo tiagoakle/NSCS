@@ -1,3 +1,5 @@
+clear all
+clc
 
 %Build an lp problem
 m = 50;
@@ -15,6 +17,11 @@ c(nf+1:n)  = c(nf+1:n) + rand(n-nf,1);
 %Set parameters
 pars.n = n;
 pars.m = m;
+pars.cnbfgsstps = 0;
+pars.echo = 4;
+pars.outermaxit = 40;
+pars.centmeastype = 5; %Use the same as the theory
+pars.secord = 1;
 
 v0.x     = rand(nc,1);
 

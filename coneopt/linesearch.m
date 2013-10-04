@@ -80,13 +80,18 @@ for j = 1:pars.lsmaxit
             R.block = 'ce';
         end
     end
-    
+ 
+
+    %XXXDEBUG
+    fprintf('\t\t atd bck %i, block %s\n',j,R.block);   
+
     if dosect
         a     = a*pars.lscaff;
         nsect = nsect + 1;
     else
         break;
     end
+
     
 end
 

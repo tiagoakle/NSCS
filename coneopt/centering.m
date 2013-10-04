@@ -25,7 +25,7 @@ if ~R.stop
         rs.r3 = v.rG   - (-pars.c'*v.x + pars.b'*v.y - v.kappa);
         rs.r4 = v.mu   - (v.tau*v.kappa);
         rs.r5 =        - (-pars.A'*v.y + v.mu*v.F{2} + v.tau*pars.c);
-        
+       
         
         % compute first centering measure:
         r2cent     = rs.r2 + rs.r5;
@@ -143,7 +143,7 @@ if ~R.stop
         
         % line search:
         v = linesearchcent(v,K,pars);
-        
+                
         % store previous step before taking new step (for bfgs)
         v.xprev = v.x;
         v.gprev = v.F{2};
@@ -161,6 +161,10 @@ if ~R.stop
         %v.lam = full(sqrt(v.dxc'*(v.F{3}*v.dxc) ) );
         % same as: (cheaper to compute)
         v.lam = sqrt(v.dxc'*(rs.r5-v.dsc)/v.mu);
+
+        %XXX DEBUG
+        fprintf('\t \t v.lam %g\n',v.lam);
+        %END DEBUG
         
         % for printing:
         R.trace.cent.a(v.i)         = v.ac;

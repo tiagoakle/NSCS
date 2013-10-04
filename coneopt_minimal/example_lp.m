@@ -1,32 +1,34 @@
-% Linear problem
+clear all
+clc
 
-clear; clc;
- 
-M = 20;
-N = 50;
- 
-A    = sprandn(M,N,0.8);
-xx   = rand(N,1);  %Positive vector
-b    = A*xx;
-c    = A'*randn(M,1)+rand(N,1); %Feasible gradient
+%Build an lp problem
+m = 50;
+n = 100;
+nf = 0;
+nc = n-nf;
 
- 
-pars.echo   = 4;
-pars.beta   = 0.99;
-pars.trace  = 3;
-pars.secord = 0;
+A  = randn(m,n);
+x  = [randn(nf,1);rand(nc,1)];
+b  = A*x;
 
-pars.n = N;
-pars.m = M;
-%build the cone 
-K.npos = N;
+c          = A'*randn(m,1);
+c(nf+1:n)  = c(nf+1:n) + rand(n-nf,1);
+
+%Set parameters
+pars.n = n;
+pars.m = m;
+pars.cnbfgsstps = 0;
+pars.echo = 4;
+v0.x     = rand(nc,1);
+
+% build cone:
+K.npos = nc;
 K.npow = 0;
 K.nexp = 0;
 K.nlog = 0;
 K      = getbarrpar(K);
 
-%Initial point
-v0.x = ones(N,1);
-
+% call to coneopt:
 R = coneopt(A,b,c,v0,K,pars);
- 
+
+
