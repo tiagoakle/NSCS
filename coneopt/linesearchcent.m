@@ -81,7 +81,6 @@ for j = 1:pars.lsmaxit
 
     % safety 1:
     if a < pars.stpszmin
-        fprintf('\t \t safety\n');
         break;
     end
 

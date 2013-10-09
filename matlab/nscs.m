@@ -1,7 +1,7 @@
 %NSCS matlab minimal version
-addpath '../coneopt/'
-clear all
-clc
+%This path is used to call the linear solver in coneopt
+addpath '../../coneopt/'
+%clear all
 %Require
 % in structure problem:
 
@@ -23,61 +23,29 @@ clc
 % c
 
 
-
-%------------- Define a testing problem -----------
-%Build an lp problem
-m = 50;
-n = 100;
-nf = 0;
-nc = n-nf;
-
-A  = randn(m,n);
-x  = [randn(nf,1);rand(nc,1)];
-b  = A*x;
-
-c          = A'*randn(m,1);
-c(nf+1:n)  = c(nf+1:n) + rand(n-nf,1);
-
-%Generate a random start
-x0 = [randn(nf,1);rand(nc,1)];
-problem = struct;
-problem.A = A;
-problem.b = b;
-problem.c = c;
-problem.m = m;
-problem.n = n;
-problem.n_free = nf;
-problem.n_pos = nc;
-problem.soc_cones = 0;
-problem.n_soc_cones = 0;
-problem.n_sdp_cones = 0;
-problem.sdp_cones     = 0;
-problem.n_exp_cones   = 0;
-problem.n_power_cones = 0;
-x0f        = randn(nf,1);
-x0c        = rand(nc,1);
-
-clear 'm' 'n' 'nf' 'nc' 'A' 'b' 'c' 'x';
-
-
-%--------- End of problem definition -------------
-
 %Set up the default parameters
-    pars.max_iter   = 40;
-    pars.max_affine_backtrack_iter = 300;
-    pars.max_centering_backtrack_iter = 300;
-    pars.max_c_iter = 50;
-    pars.backtrack_affine_constant = 0.94;
-    pars.backtrack_centering_constant = 0.5;
-    pars.beta       = 0.2;
-    pars.theta      = 0.8;
-    pars.eta        = 0.9995;
-    pars.use_nesterov_todd_centering = false;
-    pars.stop_primal= 1e-5;
-    pars.stop_dual  = 1e-5;
-    pars.stop_gap   = 1e-5;
+    pars.max_iter   = 80;  %Maximum outer iterations
+    pars.max_affine_backtrack_iter = 300;    %Maximum affine backtracking steps
+    pars.max_centering_backtrack_iter = 300; %Maximum centering backtracking steps
+    pars.max_c_iter = 50;                    %Maximum centering iterations per affine  iteration
+    pars.backtrack_affine_constant = 0.94;   %Affine backtracking constant
+    pars.backtrack_centering_constant = 0.5; %Centering backtracking constant
+    pars.beta       = 0.2;                   %Stop centering when ||dx||_H<beta
+    pars.theta      = 0.8;                   %Take an affine stem if ||Psi^+||<theta*mu+
+    pars.eta        = 0.9995;                %Multiple of step to the boundary
+    pars.use_nesterov_todd_centering = false; %Use centering points for symmetric cones
+    pars.stop_primal= 1e-10;                 %Stopping criteria p_res/rel_p_res<stop_primal.
+    pars.stop_dual  = 1e-10;
+    pars.stop_gap   = 1e-10;
+    pars.solve_second_order = true;
 
-    pars.print      = 1;
+    pars.print      = 1;                     %Level of verbosity from 0 to 11
+    %Regularization for the linear solver
+    pars.delta      = 5e-10;
+    pars.gamma      = 5E-10;
+    pars.max_iter_ref_rounds = 0;
+    pars.linear_solver = 'mixed';
+    pars.centrality_measure = 1;
 
 %------------------------------------------------
 % Validate problem input and initialize the state
@@ -108,11 +76,17 @@ end
 %----------------------------------------------
 % Print the header
 %-----------------------------------------------
-fprintf('%2s  %2s  %6s   %6s     %6s     %6s       %6s       %6s     %6s     %6s\n',...
+if(pars.print >0)
+    fprintf(' Problem size (%i,%i) nnz(A): %i \n',problem.m,problem.n,nnz(problem.A));
+    fprintf('==========================================================================\n');
+    fprintf('%2s  %2s  %6s   %6s     %6s     %6s       %6s       %6s     %6s     %6s\n',...
                          'it','cit',...
                          'a_a','mu',...
                          'tau','kap',...
                          'p_res','d_res','rel_gap','g_res');
+    fprintf(' Linear solver %s centrality %i \n',pars.linear_solver,pars.centrality_measure);
+    fprintf('==========================================================================\n');
+end
 
 
 
@@ -175,7 +149,12 @@ m           = problem.m;
 state.p_res         =  problem.b*state.tau-problem.A*[state.xf;state.xc];
 state.d_res         = -problem.c*state.tau+problem.A'*state.y;
 state.d_res(nf+1:n) = state.d_res(nf+1:n) + state.s;
-state.g_res         = - problem.b'*state.y  + problem.c(1:nf)'*state.xf+problem.c(nf+1:n)'*state.xc + state.kappa; 
+if(~isempty(state.xf)) %If state.xf is empty then the c'x would result in an empty matrix
+    cfxf = problem.c(1:nf)'*state.xf;
+else
+    cfxf = 0;
+end  
+state.g_res         = - problem.b'*state.y  +cfxf+problem.c(nf+1:n)'*state.xc + state.kappa; 
 
 ctx                 = problem.c(problem.n_free+1:problem.n)'*state.xc;
 bty                 = problem.b'*state.y;
@@ -184,28 +163,31 @@ state.relative_gap  = abs( ctx - bty )/( state.tau + abs(bty) );
 
 %Calculate the residual norms
 state.n_p_res       = norm(state.p_res,'inf')/state.rel_p_res;
-state.n_d_res       = norm(state.p_res,'inf')/state.rel_d_res;
+state.n_d_res       = norm(state.d_res,'inf')/state.rel_d_res;
 state.n_g_res       = abs(state.g_res)/state.rel_g_res;;
 
 %Print the iteration log
-fprintf('%2i  %2i  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e   %3.3e\n',...
+if(pars.print > 0)
+    fprintf('%2i  %2i  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e   %3.3e\n',...
                      state.m_iter,state.c_iter,...
                      0,state.mu,...
                      state.tau,state.kappa,...
                      state.n_p_res,state.n_d_res,state.relative_gap,state.n_g_res);
+end
 
 
 %-----------------------------------------------
 %Start of the major iteration
 %-----------------------------------------------
 m_iter = 0;
+state.exit_reason = 'Max Iter Reached';
 for m_iter = 1:pars.max_iter
    
     state.m_iter = m_iter;
-
-    %Build the system for the tangent direction
-    %------------------------------------------------- 
     
+    %-------------------------
+    %Solve the linear system
+    %-------------------------
     %Evaluate the hessian either at X or at the centering point
     if(pars.use_nesterov_todd_centering)
         %If Nesterov Todd centering is enabled
@@ -220,33 +202,70 @@ for m_iter = 1:pars.max_iter
     n = problem.n;
     nc = problem.n_constrained;
     nf = problem.n_free;
+      
+    %Solve the linear system 
+    if(strcmp(pars.linear_solver,'umfpack')==1)
+        %Assemble the matrix
+        Sc  = [sparse(nf,nc);-speye(nc)];
+        K5= [[sparse(m,m) , problem.A                           ,-problem.b     ,sparse(m,nc)  ,sparse(m,1)];...
+             [-problem.A' , sparse(n,n)                         ,problem.c      ,Sc            ,sparse(n,1)];...
+             [problem.b'  , -problem.c'                         ,sparse(1,1)    ,sparse(1,nc)  ,-1         ];...
+             [sparse(nc,m), [sparse(nc,nf) ,sparse(state.mu*H)] ,sparse(nc,1)   ,speye(nc,nc)  ,sparse(nc,1)];...
+             [sparse(1,m) , sparse(1,n)                         ,state.kappa    ,sparse(1,nc)  ,state.tau   ]];
+         
+              
+        %Build the rhs
+        rhs = [state.p_res;state.d_res;state.g_res;-state.s;-state.tau*state.kappa];  
 
-    %Assemble the matrix
-    Sc  = [sparse(nf,nc);-speye(nc)];
-    K5= [[sparse(m,m) , problem.A                           ,-problem.b     ,sparse(m,nc)  ,sparse(m,1)];...
-         [-problem.A' , sparse(n,n)                         ,problem.c      ,Sc            ,sparse(n,1)];...
-         [problem.b'  , -problem.c'                         ,sparse(1,1)    ,sparse(1,nc)  ,-1         ];...
-         [sparse(nc,m), [sparse(nc,nf) ,sparse(state.mu*H)] ,sparse(nc,1)   ,speye(nc,nc)  ,sparse(nc,1)];...
-         [sparse(1,m) , sparse(1,n)                         ,state.kappa    ,sparse(1,nc)  ,state.tau   ]];
-     
-          
-    %Build the rhs
-    rhs = [state.p_res;state.d_res;state.g_res;-state.s;-state.tau*state.kappa];  
+        d       = K5\rhs; 
+        state.dy       = d(1:m);
+        state.dxf      = d(m+1:m+1+nf);
+        state.dxc      = d(m+nf+1:m+n);
+        state.dtau     = d(m+n+1);
+        state.ds       = d(m+n+2:m+n+1+nc);
+        state.dkappa   = d(m+n+nc+2);
 
-    %Solve for the direction
-    %----------------------------------------------------------
-    state.d       = K5\rhs;
-    state.dy      = state.d(1:m);
-    state.dxf     = state.d(m+1:m+nf);
-    state.dxc     = state.d(m+nf+1:m+n);
-    state.dtau    = state.d(m+n+1);
-    state.ds      = state.d(m+n+2:m+n+nc+1);
-    state.dkappa  = state.d(m+n+nc+2);
+    elseif(strcmp(pars.linear_solver,'mixed')==1)
+
+        [d, factorization]  = solve_linear_system(H,state.mu,state.kappa,state.tau,problem,pars,...
+                             state.p_res,state.d_res,state.g_res,-state.tau*state.kappa,-state.s,[]);
+ 
+        state.dy       = d.dy;
+        state.dxf      = d.dxf;
+        state.dxc      = d.dxc;
+        state.dtau     = d.dtau;
+        state.ds       = d.ds;
+        state.dkappa   = d.dkappa;
+        
+        %Evaluate the second order direction
+        %And eventually the Mehrota predictor corrector not implemented yet
+        if(pars.solve_second_order)
+             
+             state.g        = eval_grad(problem,state.xc);
+             d              = solve_linear_system(H,state.mu,state.kappa,state.tau,problem,pars,...
+                              zeros(size(state.p_res)),zeros(size(state.d_res)),0,-state.dtau*state.dkappa,2*state.mu*(state.xc.^(-3)).*(state.dxc.^2)+2*(-state.s-state.ds),factorization);
+  
+            state.dcorr_y          =d.dy;
+            state.dcorr_xf         =d.dxf;
+            state.dcorr_xc         =d.dxc;
+            state.dcorr_tau        =d.dtau;
+            state.dcorr_s          =d.ds;
+            state.dcorr_kappa      =d.dkappa;
+            if(isempty(state.dcorr_xf))
+                state.dcorr_xf = [];
+            end
+                
+        end
+    end %End of the selection of linear solver
+
+    %this resolves the matlab quirk that does not allow adding 
+    %[] to an empty matrix
+    if(isempty(state.dxf))
+        state.dxf = [];
+    end
    
     %Count the solution
     state.kkt_solves = state.kkt_solves + 1; 
-
-
 
     clear 'K5' 'rhs' 'state.d'
     
@@ -271,47 +290,69 @@ for m_iter = 1:pars.max_iter
         state.b_iter = b_iter;
 
         %Evaluate the trial point
-        ya         = state.y         + state.a_affine*state.dy; 
-        xaf        = state.xf        + state.a_affine*state.dxf;
-        xac        = state.xc        + state.a_affine*state.dxc;
-        taua       = state.tau       + state.a_affine*state.dtau;
-        sa         = state.s         + state.a_affine*state.ds;
-        kappaa     = state.kappa     + state.a_affine*state.dkappa;
+        ya         = state.y        + state.a_affine*state.dy; 
+        xaf        = state.xf       + state.a_affine*state.dxf;
+        xca        = state.xc       + state.a_affine*state.dxc;
+        taua       = state.tau      + state.a_affine*state.dtau;
+        sa         = state.s        + state.a_affine*state.ds;
+        kappaa     = state.kappa    + state.a_affine*state.dkappa;
+
+
+        if(pars.solve_second_order)
+           ya         = ya         + 0.5*state.a_affine^2*state.dcorr_y; 
+           xaf        = xaf        + 0.5*state.a_affine^2*state.dcorr_xf;
+           xca        = xca        + 0.5*state.a_affine^2*state.dcorr_xc;
+           taua       = taua       + 0.5*state.a_affine^2*state.dcorr_tau;
+           sa         = sa         + 0.5*state.a_affine^2*state.dcorr_s;
+           kappaa     = kappaa     + 0.5*state.a_affine^2*state.dcorr_kappa;       
+        end
 
         %Check if the present point is primal dual feasible
-        p_feas     = eval_primal_feas(problem,xac);
+        p_feas     = eval_primal_feas(problem,xca);
         if(p_feas)
             d_feas     = eval_dual_feas(problem,sa);
             if(d_feas)
+        
                 %Calculate mu and the duality gap at the trial point
-                dga        = xac'*sa+kappaa*taua;
+                dga        = xca'*sa+kappaa*taua;
                 mua        = dga/(state.nu+1);
-                %Evaluate the centrality measure ||sa+mua*g(xa)||_H^{-1}(xa)
-                H           = eval_hessian(problem,xac);
-                state.g     = eval_grad(problem,xac); %we can save this with a product..
+               
+                %Compute s+mug(x)
+                state.g     = eval_grad(problem,xca); %we can save this with a product..
                 state.temp1 = +mua*state.g;
                 state.temp1 = sa+state.temp1;
-                state.temp2 = H\state.temp1;
-                state.cent  = sqrt(state.temp1'*state.temp2);
 
-                if(pars.print>8) fprintf('Bk %i ||s+mg||_H^- at affine backtrack %g,  mua*theta %g \n',b_iter, state.cent,mua*pars.theta); end
+                %Choose the centrality measure to use
+                if(pars.centrality_measure==inf)  %||s+mu g(x)||_inf/||g||_inf
+                    state.cent = norm(state.temp1,inf)/norm(state.g,inf);
+                    state.cent = max(state.cent,abs(taua*kappaa-mua));
+                else
+                    %Evaluate the centrality measure ||sa+mua*g(xa)||_H^{-1}(xa)
+                    H           = eval_hessian(problem,xca);
+                   
+                    state.temp2 = H\state.temp1;
+                    state.cent  = sqrt(state.temp1'*state.temp2);
+                end
+                    
+
+                if(pars.print>3) fprintf('Bk %i ||s+mg||_H^- at affine backtrack %g,  mua*theta %g \n',b_iter, state.cent,mua*pars.theta); end
 
                 if(state.cent <= mua*pars.theta) %Stop when this is satisfied
                     break;
                 end
             else
                 %not dual infeasible 
-                if(pars.print>8) fprintf('Bk %i Dual infeasible at affine backtrack \n',b_iter); end
+                if(pars.print>3) fprintf('Bk %i Dual infeasible at affine backtrack \n',b_iter); end
             end
         else
             %not primal infeasible 
-                if(pars.print>8) fprintf('Bk %i Primal infeasible at affine backtrack \n',b_iter); end
+                if(pars.print>3) fprintf('Bk %i Primal infeasible at affine backtrack \n',b_iter); end
         end 
         state.a_affine  = state.a_affine*pars.backtrack_affine_constant;
     end %End of backtrack loop
 
     %If the maximum number of iterates was reached report an error and exit
-    if(state.cent > mua*pars.theta)
+    if(~p_feas || ~d_feas || state.cent > mua*pars.theta)
         fprintf('Backtracking line search failed is backtrack_affine_constant too large?\n');
         state.exit_reason = 'affine backtrack line search fail';
         break;
@@ -320,7 +361,7 @@ for m_iter = 1:pars.max_iter
     %If the line-search succeeded take the step
     state.y     = ya;
     state.xf    = xaf;
-    state.xc    = xac;
+    state.xc    = xca;
     state.tau   = taua;
     state.s     = sa;
     state.kappa = kappaa;
@@ -328,10 +369,21 @@ for m_iter = 1:pars.max_iter
 
     clear 'ya' 'xaf' 'xac' 'taua' 'sa' 'kappaa' 'mua'
 
+    %Calculate the residuals
+    state.p_res         =  problem.b*state.tau-problem.A*[state.xf;state.xc];
+    state.d_res         = -problem.c*state.tau+problem.A'*state.y;
+    state.d_res(nf+1:n) = state.d_res(nf+1:n) + state.s;
+    if(~isempty(state.xf)) %If state.xf is empty then the c'x would result in an empty matrix
+        cfxf = problem.c(1:nf)'*state.xf;
+    else
+        cfxf = 0;
+    end  
+    state.g_res         = - problem.b'*state.y  +cfxf+problem.c(nf+1:n)'*state.xc + state.kappa; 
+    
 
     %          Centering process
     %----------------------------------------------------------
-    if(pars.print>8) fprintf('||s+mg||_H^- before centering : %g\n',state.cent); end
+    if(pars.print>1) fprintf('||s+mg||_H^- before centering : %g\n',state.cent); end
 
     for c_iter = 1:pars.max_c_iter
         state.c_iter = c_iter;
@@ -345,106 +397,158 @@ for m_iter = 1:pars.max_iter
         state.temp2 = H\state.temp1;
         state.cent  = sqrt(state.temp1'*state.temp2);
  
+        %Shorthand 
+        m = problem.m;
+        n = problem.n;
+        nc = problem.n_constrained;
+        nf = problem.n_free;
 
-        %Build the system matrix
-        Sc  = -[sparse(nf,nc);speye(nc)];
-        K5= [[sparse(m,m) , problem.A                         ,-problem.b     ,sparse(m,nc)  ,sparse(m,1)];...
-             [-problem.A' , sparse(n,n)                       ,problem.c      ,Sc           ,sparse(n,1)];...
-             [problem.b'  , -problem.c'                       ,sparse(1,1)    ,sparse(1,nc)  ,-1         ];...
-             [sparse(nc,m), sparse(nc,nf) ,sparse(state.mu*H) ,sparse(nc,1)   ,speye(nc,nc)  ,sparse(nc,1)];...
-             [sparse(1,m) , sparse(1,n)                       ,state.kappa    ,sparse(1,nc)  ,state.tau   ]];
-               
-      
+
+    %Solve the linear system 
+    if(strcmp(pars.linear_solver,'umfpack')==1)
+        %Assemble the matrix
+        Sc  = [sparse(nf,nc);-speye(nc)];
+        K5= [[sparse(m,m) , problem.A                           ,-problem.b     ,sparse(m,nc)  ,sparse(m,1)];...
+             [-problem.A' , sparse(n,n)                         ,problem.c      ,Sc            ,sparse(n,1)];...
+             [problem.b'  , -problem.c'                         ,sparse(1,1)    ,sparse(1,nc)  ,-1         ];...
+             [sparse(nc,m), [sparse(nc,nf) ,sparse(state.mu*H)] ,sparse(nc,1)   ,speye(nc,nc)  ,sparse(nc,1)];...
+             [sparse(1,m) , sparse(1,n)                         ,state.kappa    ,sparse(1,nc)  ,state.tau   ]];
+         
+              
         %Build the rhs
         rhs                 = zeros(n+m+nc+2,1);
-        rhs(m+n+2:m+n+1+nc) = -state.s-state.mu*state.g;
+        %XXX A little wasteful temporary solution
+        r5                  = -state.s-state.mu*state.g;
+        rhs(m+n+2:m+n+1+nc) = r5;
         rhs(m+n+nc+2)       = state.mu - state.tau*state.kappa;
 
-        %Solve for the direction 
-        state.d        = K5\rhs;
-        state.dy       = state.d(1:m);
-        state.dxf      = state.d(m+1:m+nf);
-        state.dxc      = state.d(m+nf+1:m+n);
-        state.dtau     = state.d(m+n+1);
-        state.ds       = state.d(m+n+2:m+n+nc+1);
-        state.dkappa   = state.d(m+n+nc+2);
+        d       = K5\rhs; 
+        state.dy       = d(1:m);
+        state.dxf      = d(m+1:m+1+nf);
+        state.dxc      = d(m+nf+1:m+n);
+        state.dtau     = d(m+n+1);
+        state.ds       = d(m+n+2:m+n+1+nc);
+        state.dkappa   = d(m+n+nc+2);
 
-        %Count the solution
-        state.kkt_solves = state.kkt_solves + 1; 
+    elseif(strcmp(pars.linear_solver,'mixed')==1)
 
-        %Calculate ||dx||_H(X)
-        state.n_x_H = sqrt(state.dxc'*rhs(m+n+2:m+n+1+nc)/state.mu); %This is a cheaper way to do it rhs(m+n+2:m+n+1+nc) = -s-mu*g 
+        %Build the rhs
+        r1             = state.p_res-(problem.b*state.tau-problem.A*[state.xf;state.xc]);
+        r2             = state.d_res-(-problem.c*state.tau+problem.A'*state.y);
+        r2(nf+1:n)     = r2(nf+1:n) - state.s;
+        if(~isempty(state.xf)) %If state.xf is empty then the c'x would result in an empty matrix
+            cfxf = problem.c(1:nf)'*state.xf;
+        else
+            cfxf = 0;
+        end  
+        r3             = state.g_res -(- problem.b'*state.y  +cfxf+problem.c(nf+1:n)'*state.xc + state.kappa);
+       
+        %From coneopt this is backwards
+        r4             = state.mu - state.tau*state.kappa;
+        r5             = -state.s-state.mu*state.g;
 
-        if(pars.print > 9) fprintf('\t ||dx||_H before cent backtrack : %g\n',state.n_x_H); end
-
-        %Centering backtrack 
-        %----------------------------------------------------------------------
-        state.a_cent  = 1.0;
-        %Find the largest step to the boundary of tau, kappa 
-        % backtrack until the centering measure is smaller than mu*pars.theta
-        
-        if(state.dtau<0)
-            state.a_cent = min(state.a_cent,-state.tau/state.dtau);
+        d              = solve_linear_system(H,state.mu,state.kappa,state.tau,problem,pars,r1,r2,r3,r4,r5,[]);
+        state.dy       = d.dy;
+        state.dxf      = d.dxf;
+        state.dxc      = d.dxc;
+        state.dtau     = d.dtau;
+        state.ds       = d.ds;
+        state.dkappa   = d.dkappa;
+       
+        %If we are debugging and want to see calculate the residuals and print
+        if(pars.print > 2)
+            n_res_1 = norm(problem.A*[state.dxf;state.dxc]-state.dtau*problem.b-r1);
+            n_res_2 = norm(-problem.A'*state.dy + state.dtau*problem.c - [zeros(nf,1);state.ds] - r2);
+            n_res_3 = norm(problem.b'*state.dy-problem.c'*state.dxc -state.dkappa-r3);
+            n_res_5 = norm(state.mu*H*state.dxc+state.ds-r5);
+            n_res_4 = norm(state.kappa*state.dtau+state.tau*state.dkappa-r4);
+            fprintf('Residuals of mixed C solve r1 %g, r2 %g, r3 %g, r5 %g, r4 %g \n',n_res_1,n_res_2,n_res_3,n_res_5,n_res_4); 
         end
-        if(state.dkappa<0)
-            state.a_cent = min(state.a_cent,-state.kappa/state.dkappa);
-        end
-         
-        %Take a multiple of the maximum length
-        state.a_cent = state.a_cent*pars.eta;
+    end %End of linear solver selection 
+
+    %this resolves the matlab quirk that does not allow adding 
+    %[] to an empty matrix
+    if(isempty(state.dxf))
+        state.dxf = [];
+    end
+            
+    %Count the solution
+    state.kkt_solves = state.kkt_solves + 1; 
+
+    %Calculate ||dx||_H(X)
+    %state.n_x_H = sqrt(state.dxc'*rhs(m+n+2:m+n+1+nc)/state.mu); %This is a cheaper way to do it rhs(m+n+2:m+n+1+nc) = -s-mu*g 
+    state.n_x_H  = sqrt(state.dxc'*r5/state.mu);
+
+    if(pars.print > 2) fprintf('\t ||dx||_H before cent backtrack : %g\n',state.n_x_H); end
+
+    %Centering backtrack 
+    %----------------------------------------------------------------------
+    state.a_cent  = 1.0;
+    %Find the largest step to the boundary of tau, kappa 
+    % backtrack until the centering measure is smaller than mu*pars.theta
+    
+    if(state.dtau<0)
+        state.a_cent = min(state.a_cent,-state.tau/state.dtau);
+    end
+    if(state.dkappa<0)
+        state.a_cent = min(state.a_cent,-state.kappa/state.dkappa);
+    end
+     
+    %Take a multiple of the maximum length
+    state.a_cent = state.a_cent*pars.eta;
  
-        if(pars.print > 9) fprintf('\t ||s+mg||_H^- before cent backtrack : %g\n',state.cent); end
-        
-        %Backtracking iteration
-        c_backtrack_iter = 0;
-        for c_backtrack_iter = 1:pars.max_centering_backtrack_iter
-            state.c_backtrack_iter = c_backtrack_iter;
+    if(pars.print > 2) fprintf('\t ||s+mg||_H^- before cent backtrack : %g\n',state.cent); end
+    
+    %Backtracking iteration
+    c_backtrack_iter = 0;
+    for c_backtrack_iter = 1:pars.max_centering_backtrack_iter
+        state.c_backtrack_iter = c_backtrack_iter;
 
-            %Calculate the trial point
-            xca        = state.xc        + state.a_cent*state.dxc;
-            taua       = state.tau       + state.a_cent*state.dtau;
-            sa         = state.s         + state.a_cent*state.ds;
-            kappaa     = state.kappa     + state.a_cent*state.dkappa;
-                      
-            %Evaluate the centrality measure ||sa+mua*g(xa)||_H^{-1}(xa)
-            H           = eval_hessian(problem,xca);
-            state.g     = eval_grad(problem,xca); %we can save this with a product..
-            
-            %Observe that mu is not the value of xca'sa + taua*kappaa but the value 
-            % of mu before centering starts
-            state.temp1 = sa+state.mu*state.g;
-            state.temp2 = H\state.temp1;
-            cent        = sqrt(state.temp1'*state.temp2);
-            
-            if(pars.print >10) fprintf('\t \t ||s+mg||_H^- at backtrack : %g, %i \n',state.cent,c_backtrack_iter); end
-            
-            if(cent < state.cent) %Accept the step if it decreases the centrality... 
-            %XXX: add an armijo criteria to this??
-                state.cent = cent;
-                break;
-            else
-                state.a_cent = state.a_cent*pars.backtrack_centering_constant;
-            end
-          
-        end %End of backtracking iteration
-
-        state.y     = state.y         + state.a_cent*state.dy;
-        state.xf    = state.xf        + state.a_cent*state.dxf;
-        state.xc    = state.xc        + state.a_cent*state.dxc; 
-        state.tau   = state.tau       + state.a_cent*state.dtau;
-        state.s     = state.s         + state.a_cent*state.ds;
-        state.kappa = state.kappa     + state.a_cent*state.dkappa;
-        %XXX
-        %state.mu    = mua;
+        %Calculate the trial point
+        xca        = state.xc        + state.a_cent*state.dxc;
+        taua       = state.tau       + state.a_cent*state.dtau;
+        sa         = state.s         + state.a_cent*state.ds;
+        kappaa     = state.kappa     + state.a_cent*state.dkappa;
+                  
+        %Evaluate the centrality measure ||sa+mua*g(xa)||_H^{-1}(xa)
+        H           = eval_hessian(problem,xca);
+        state.g     = eval_grad(problem,xca); %we can save this with a product..
         
-        if(pars.print > 9) fprintf('\t ||s+mg||_H^- at end of backtrack %g backtracks %i centering iter %i\n',state.cent,c_backtrack_iter,c_iter); end
-      
-        if(state.n_x_H <= pars.beta) %Stop centering when the centering measure ||dx||_H is smaller than beta
+        %Observe that mu is not the value of xca'sa + taua*kappaa but the value 
+        % of mu before centering starts
+        state.temp1 = sa+state.mu*state.g;
+        state.temp2 = H\state.temp1;
+        cent        = sqrt(state.temp1'*state.temp2);
+        
+        if(pars.print > 3) fprintf('\t \t ||s+mg||_H^- at backtrack : %g, %i \n',state.cent,c_backtrack_iter); end
+        
+        if(cent < state.cent) %Accept the step if it decreases the centrality... 
+        %XXX: add an armijo criteria to this??
+            state.cent = cent;
             break;
+        else
+            state.a_cent = state.a_cent*pars.backtrack_centering_constant;
         end
+      
+    end %End of backtracking iteration
+
+    state.y     = state.y         + state.a_cent*state.dy;
+    state.xf    = state.xf        + state.a_cent*state.dxf;
+    state.xc    = state.xc        + state.a_cent*state.dxc; 
+    state.tau   = state.tau       + state.a_cent*state.dtau;
+    state.s     = state.s         + state.a_cent*state.ds;
+    state.kappa = state.kappa     + state.a_cent*state.dkappa;
+    %XXX
+    %state.mu    = mua;
+    
+    if(pars.print > 2) fprintf('\t ||s+mg||_H^- at end of backtrack %g backtracks %i centering iter %i\n',state.cent,c_backtrack_iter,c_iter); end
+    
+    if(state.n_x_H <= pars.beta) %Stop centering when the centering measure ||dx||_H is smaller than beta
+        break;
+    end
 
   end %End of centering iteration
-  if(pars.print > 9) fprintf('||s+mg||_H^- at end of centering : %g, main iter %i\n',state.cent,m_iter); end
+  if(pars.print > 1) fprintf('||s+mg||_H^- at end of centering : %g, main iter %i\n',state.cent,m_iter); end
  
   %Check if the centering iteration failed   
   if(state.n_x_H > pars.beta)
@@ -457,12 +561,16 @@ for m_iter = 1:pars.max_iter
     state.p_res         =  problem.b*state.tau-problem.A*[state.xf;state.xc];
     state.d_res         = -problem.c*state.tau+problem.A'*state.y;
     state.d_res(nf+1:n) = state.d_res(nf+1:n) + state.s;
-    state.g_res         = - problem.b'*state.y +...
-                            problem.c(1:nf)'*state.xf+problem.c(nf+1:n)'*state.xc + state.kappa; 
+    if(~isempty(state.xf)) %If state.xf is empty then the c'x would result in an empty matrix
+        cfxf = problem.c(1:nf)'*state.xf;
+    else
+        cfxf = 0;
+    end  
+    state.g_res         = - problem.b'*state.y  +cfxf+problem.c(nf+1:n)'*state.xc + state.kappa; 
     
     %Calculate the residual norms
     state.n_p_res       = norm(state.p_res,'inf')/state.rel_p_res;
-    state.n_d_res       = norm(state.p_res,'inf')/state.rel_d_res;
+    state.n_d_res       = norm(state.d_res,'inf')/state.rel_d_res;
     state.n_g_res       = abs(state.g_res)/state.rel_g_res;
 
     ctx                 = problem.c(problem.n_free+1:problem.n)'*state.xc;
@@ -471,18 +579,19 @@ for m_iter = 1:pars.max_iter
 
     %Print the iteration log
     %iter centering iter, 
+   if(pars.print>0) 
     fprintf('%2i  %2i  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e   %3.3e\n',...
                          state.m_iter,state.c_iter,...
                          state.a_affine,state.mu,...
                          state.tau,state.kappa,...
                          state.n_p_res,state.n_d_res,...
                          state.relative_gap,state.n_g_res);
-
+    end
     %Evaluate the stopping criteria
-    if(state.n_p_res < pars.stop_primal && state.n_p_res < pars.stop_dual && state.n_g_res < pars.stop_gap)
+    if(state.n_p_res < pars.stop_primal && state.n_d_res < pars.stop_dual && state.n_g_res < pars.stop_gap)
         if(state.kappa<state.tau-eps)
             state.exit_reason  = 'Optimal';
-        elseif (state.kappa>state.ta+eps)
+        elseif (state.kappa>state.tau+eps)
             state.exit_reason  = 'Infeasible';
             %XXX detect p.d inf
         else
@@ -494,8 +603,10 @@ for m_iter = 1:pars.max_iter
 end %End of main loop
  
     %Print the final message
+if(pars.print>0) 
     fprintf('==========================================================================================\n');
     fprintf('Exit because %s \n Iterations %i\n Centering Iterations %i\n Number of KKT Solves %i\n', state.exit_reason, state.m_iter,...
             state.centering_iterations,state.kkt_solves);
+end
 
 

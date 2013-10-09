@@ -17,12 +17,12 @@ while true
         
     [v.a,R] = linesearch(v,K,pars,R);    % line search along atd
     v       = updatevars(v,K);           % take step
-
-    v.kappa    
+    
     [v,R]   = getresiduals(v,pars,R);    % new residuals
     R       = checkstopcrit(v,pars,R);   % check stopping crits
     
     [v,R]   = centering(v,K,pars,R);     % centering (correction)
+        
     v.s     = -pars.A'*v.y + ...         % pd-lifting
         pars.c*v.tau - v.rD0;               
     
