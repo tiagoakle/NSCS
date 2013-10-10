@@ -37,7 +37,7 @@ addpath '../../coneopt/'
     pars.stop_primal= 1e-10;                 %Stopping criteria p_res/rel_p_res<stop_primal.
     pars.stop_dual  = 1e-10;
     pars.stop_gap   = 1e-10;
-    pars.solve_second_order = true;
+    pars.solve_second_order = false;
 
     pars.print      = 1;                     %Level of verbosity from 0 to 11
     %Regularization for the linear solver

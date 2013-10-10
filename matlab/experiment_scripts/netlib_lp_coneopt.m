@@ -9,7 +9,7 @@ clear all
   load 'standard_form_indices.mat' 
 
   %Choose a problem from the list
-  problem_index = 11; 
+  problem_index = 4; 
   %Extract the problem 
   problem_uf_ix = st_ix(problem_index);
   %Get the problem from ufget
@@ -58,7 +58,7 @@ clear all
    pars.n = problem.n;
    pars.m = problem.m;
    pars.echo = 4;
-   pars.centmeastype = 2;
+   pars.centmeastype = 5;
    %initial point 
    v0 = struct;
    v0.x = x0c;
