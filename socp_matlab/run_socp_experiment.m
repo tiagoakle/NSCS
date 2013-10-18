@@ -1,55 +1,70 @@
 clear all
 close all
-%The objective of this experiment is to compare the rate at which 
-% x'*s decays along two different directions:
-% The atd direction for (x,s) calculated from muH(x)dx+dx=-s
-% The centered direction for (x+dxc,s+dxc) calculated from muH(x)dx+ds=-s-dxl
-% where muH(x)dxl+dsl=s+mug(x) and ||dxl||_H(x) < 1
 
-% The experiment consists of the following: 
-% 1- Generate a random LP
-% 2- Generate a cone feasible x0,tau0
-% 3- Generate a cone feasible s0,kappa0
-% 4- Set y0 = 0
-% 5-Calculate the residuals rp = taub-Ax, rd = -tauc+s+A'y, rg = kappa -b'y+c'x
-
-% 6- Repeatedly solve the equations
-% G{dyc\\dxc} - {0\\dsc} = {rd,rp,rg}
-% \muH(x)dxc + dsc      = -s-mug
-% and take a step x=x+adx, s=s+ads
-% until ||dxc||_H < mu
-
-% 7- Calculate dx,ds for atd as described above
-% 8- Calculate the centered points x-dxc s+dsc, and dx,ds for the centered direction
-% 9- Plot the results
-
-%----------
+%--------------------
 %Experiment parameters
-m = 10;
-n = 20;
-nu=n; %Parameter of the cone
+n_c = 10;
+%Defie some second order cones
+problem = struct;
+problem.soc_cones = [n_c,2*n_c,3*n_c];
+problem.n_soc_cones = 3;
 
-%Plotting parameters
-sample_points = 1000;
-sample_bck    = 0.99; %The samples are collected at the points (sample_bck)^k
+m = 10;
+n = sum(soc_cones);
+nu= 2*problem.n_soc_cones; %Parameter of the problem
 
 %-------
-%Generate a random strictly feasible LP
+%Generate a feasible primal point
+x1 = randn(problem.soc_cones(1),1);
+x2 = randn(problem.soc_cones(2),1);
+x3 = randn(problem.soc_cones(3),1);
+x1 = norm(x1(2:end))+rand(1);
+x3 = norm(x2(2:end))+rand(1);
+x3 = norm(x3(2:end))+rand(1);
+x_feas = [x1;x2;x3];
+
+%Generate a feasible dual point
+s1 = randn(problem.soc_cones(1),1);
+s2 = randn(problem.soc_cones(2),1);
+s3 = randn(problem.soc_cones(3),1);
+s1 = norm(s1(2:end))+rand(1);
+s3 = norm(s2(2:end))+rand(1);
+s3 = norm(s3(2:end))+rand(1);
+s_feas = [s1;s2;s3];
+
+
+%Generate a feasible and bounded primal dual problem
 A = randn(m,n);
-b = A*rand(n,1);
+b = A*x_feas;
 s = rand(n,1);
-c = A'*ones(m,1) + rand(n,1);
-fprintf('Generated a random feasible LP with %i constraints and %i variables\n',m,n);
+c = A'*ones(m,1) + s_feas;
+fprintf('Generated a random feasible SOCP with %i constraints and %i variables\n',m,n);
 
 %-------------------
 %Choose an initial x and s
-s= rand(n,1);
-kappa = rand(1,1);
-x = rand(n,1);
-tau = rand(1,1);
-mu = 0.05*(s'*x+tau*kappa)/(nu+1);
-y  = ones(m,1);
+x1 = randn(problem.soc_cones(1),1);
+x2 = randn(problem.soc_cones(2),1);
+x3 = randn(problem.soc_cones(3),1);
+x1 = norm(x1(2:end))+rand(1);
+x3 = norm(x2(2:end))+rand(1);
+x3 = norm(x3(2:end))+rand(1);
+x  = [x1;x2;x3];
+
+%Generate a feasible dual point
+s1 = randn(problem.soc_cones(1),1);
+s2 = randn(problem.soc_cones(2),1);
+s3 = randn(problem.soc_cones(3),1);
+s1 = norm(s1(2:end))+rand(1);
+s3 = norm(s2(2:end))+rand(1);
+s3 = norm(s3(2:end))+rand(1);
+s  = [s1;s2;s3];
+tau = 1;
+kappa = 1;
 fprintf('Selected random x,s \n');
+y  = ones(m,1);
+
+%------Select a target mu
+mu = 0.05*(s'*x+tau*kappa)/(nu+1);
 
 %--------------------
 %Evaluate the residuals
@@ -66,9 +81,13 @@ iter     = 0;
 fprintf('Will use newton to find an approximately centered point \n');
 while ~centered
     %Evaluate the hessian
-    H = diag(sparse((1./x).^2));
+    H = eval_socp_hessian(problem,x);
+    %XXX: we use this for the step 
+    %Eval the hessian at s 
+    Hs = eval_socp_hessian(problem,s);
+
     %Evaluate the gradient
-    g = -1./x;
+    g = eval_socp_gradient(problem,x);
     %Build the matrix
     K5= [[sparse(m,m) , A            , -b                 ,sparse(m,n)  ,sparse(m,1)];...
          [-A'         , sparse(n,n)  , c                  ,-speye(n)    ,sparse(n,1)];...
@@ -91,20 +110,22 @@ while ~centered
     ds     = d(m+n+2:m+2*n+1);
     dkappa = d(m+2*n+2);
 
-      %Barrier val
-    f = sum(-log(x)-log(s))-log(tau)-log(kappa);
+    %Barrier val
+    f = eval_socp_barrier(problem,x) -log(tau)-log(kappa);
 
     %Calculate the H norm of dx
     x_H_norm = sqrt(dx'*H*dx);
-
+     
     %Calculate the step size 
-    lambda = sqrt(sum((dx./x).^2+(ds./s).^2)+(dkappa./kappa)^2+(dtau./tau)^2);
+    lambda = sqrt(dx'*H*dx+ds'*Hs*ds+(dkappa./kappa)^2+(dtau./tau)^2);
     a      = 1/(1+lambda);
     
     if(mod(iter,10)==0||x_H_norm<1)
         fprintf('Iter %2i, lambda %3.3e, ||dx||_H^-1 %3.3e, barrier %3.3e \n',iter,lambda,x_H_norm,f); 
     end
     
+
+    %XXXXXXXXXXXXXXXXXXXXXXXXX CONTINUE FROM HERE
     %Calculate the maximum step size 
     ratios = [-x./dx;-tau/dtau;-s./ds;-kappa/dkappa];
     max_a  = min(ratios(find(ratios>0)));

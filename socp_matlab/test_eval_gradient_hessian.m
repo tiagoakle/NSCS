@@ -37,3 +37,13 @@ problem.soc_cones   = [n,n];
 
 g_eval = eval_socp_gradient(problem,[x;s]);
 fprintf('||g-g_eval||: %g\n',norm(g-g_eval));
+
+Hx  = 2/(x'*J*x)^2*(J*x)*(J*x)' - 1/(x'*J*x)*J;
+Hs  = 2/(s'*J*s)^2*(J*s)*(J*s)' - 1/(s'*J*s)*J;
+
+H   = blkdiag(Hx,Hs);
+
+%Test the hessian
+H_eval = eval_socp_hessian(problem,[x;s]);
+fprintf('||H-H_eval||: %g\n',norm(H-H_eval));
+
