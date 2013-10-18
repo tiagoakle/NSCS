@@ -44,8 +44,7 @@ function [g] = eval_grad(problem,xc)
                  tmp2  = [ psim1;...
                      -x2m1.*(x3.*psim1 + 1);...
                      -xi.*psim1 - x3m1];
-                
-                g(ix:ix+problem.n_exp_cones*3) = tmp2(:);
+                g(ix:ix+problem.n_exp_cones*3-1) = tmp2(:);
             end
 
 end

@@ -22,9 +22,12 @@ addpath '../../coneopt/'
 % b
 % c
 
+%Quiet the matlab warning about bad scaling
+warning('off','MATLAB:nearlySingularMatrix');
+
 
 %Set up the default parameters
-    pars.max_iter   = 80;  %Maximum outer iterations
+    pars.max_iter   = 100;  %Maximum outer iterations
     pars.max_affine_backtrack_iter = 300;    %Maximum affine backtracking steps
     pars.max_centering_backtrack_iter = 300; %Maximum centering backtracking steps
     pars.max_c_iter = 50;                    %Maximum centering iterations per affine  iteration
@@ -34,16 +37,18 @@ addpath '../../coneopt/'
     pars.theta      = 0.8;                   %Take an affine stem if ||Psi^+||<theta*mu+
     pars.eta        = 0.9995;                %Multiple of step to the boundary
     pars.use_nesterov_todd_centering = false; %Use centering points for symmetric cones
-    pars.stop_primal= 1e-10;                 %Stopping criteria p_res/rel_p_res<stop_primal.
-    pars.stop_dual  = 1e-10;
-    pars.stop_gap   = 1e-10;
-    pars.solve_second_order = false;
+    pars.stop_primal= 1e-6;                 %Stopping criteria p_res/rel_p_res<stop_primal.
+    pars.stop_dual  = 1e-6;
+    pars.stop_gap   = 1e-6;
+    pars.stop_mu    = 1e-6;
+    pars.stop_tau_kappa = 1.e-6;
+    pars.solve_second_order = true;
 
     pars.print      = 1;                     %Level of verbosity from 0 to 11
     %Regularization for the linear solver
     pars.delta      = 5e-10;
-    pars.gamma      = 5E-10;
-    pars.max_iter_ref_rounds = 0;
+    pars.gamma      = 5e-10;
+    pars.max_iter_ref_rounds = 100;
     pars.linear_solver = 'mixed';
     pars.centrality_measure = 1;
 
@@ -78,13 +83,16 @@ end
 %-----------------------------------------------
 if(pars.print >0)
     fprintf(' Problem size (%i,%i) nnz(A): %i \n',problem.m,problem.n,nnz(problem.A));
+    fprintf(' Free: %i, Positive %i, SOCP cones %i, Matrix %i, Exponential Cones %i\n',...
+        problem.n_free,problem.n_pos,problem.n_soc_cones,...
+        problem.n_sdp_cones,problem.n_exp_cones);
+    fprintf(' Linear solver %s centrality %i \n',pars.linear_solver,pars.centrality_measure);
     fprintf('==========================================================================\n');
     fprintf('%2s  %2s  %6s   %6s     %6s     %6s       %6s       %6s     %6s     %6s\n',...
                          'it','cit',...
                          'a_a','mu',...
                          'tau','kap',...
                          'p_res','d_res','rel_gap','g_res');
-    fprintf(' Linear solver %s centrality %i \n',pars.linear_solver,pars.centrality_measure);
     fprintf('==========================================================================\n');
 end
 
@@ -129,7 +137,8 @@ state.s      = state.s-(qtx/(vtx+1))*state.temp1;
 %Calculate the initial centrality
  dga        = state.xc'*state.s+state.kappa*state.tau;
  mua        = dga/(state.nu+1);
- state.mu    = mua;
+ state.mu0  = mua;
+ state.mu   = mua;
 
 %initialize some counters
 state.c_iter = 0;
@@ -156,9 +165,9 @@ else
 end  
 state.g_res         = - problem.b'*state.y  +cfxf+problem.c(nf+1:n)'*state.xc + state.kappa; 
 
-ctx                 = problem.c(problem.n_free+1:problem.n)'*state.xc;
-bty                 = problem.b'*state.y;
-state.relative_gap  = abs( ctx - bty )/( state.tau + abs(bty) );
+state.ctx           = problem.c(problem.n_free+1:problem.n)'*state.xc;
+state.bty           = problem.b'*state.y;
+state.relative_gap  = abs( state.ctx - state.bty )/( state.tau + abs(state.bty) );
 
 
 %Calculate the residual norms
@@ -242,9 +251,13 @@ for m_iter = 1:pars.max_iter
         if(pars.solve_second_order)
              
              state.g        = eval_grad(problem,state.xc);
-             d              = solve_linear_system(H,state.mu,state.kappa,state.tau,problem,pars,...
-                              zeros(size(state.p_res)),zeros(size(state.d_res)),0,-state.dtau*state.dkappa,2*state.mu*(state.xc.^(-3)).*(state.dxc.^2)+2*(-state.s-state.ds),factorization);
+            %d              = solve_linear_system(H,state.mu,state.kappa,state.tau,problem,pars,...
+            %                 zeros(size(state.p_res)),zeros(size(state.d_res)),0,-state.dtau*state.dkappa,2*state.mu*(state.xc.^(-3)).*(state.dxc.^2)+2*(-state.s-state.ds),factorization);
+            rhs             = eval_tensor(problem,state);
+            d               = solve_linear_system(H,state.mu,state.kappa,state.tau,problem,pars,...
+                              zeros(size(state.p_res)),zeros(size(state.d_res)),0,-state.dtau*state.dkappa,rhs,factorization);
   
+
             state.dcorr_y          =d.dy;
             state.dcorr_xf         =d.dxf;
             state.dcorr_xc         =d.dxc;
@@ -573,9 +586,9 @@ for m_iter = 1:pars.max_iter
     state.n_d_res       = norm(state.d_res,'inf')/state.rel_d_res;
     state.n_g_res       = abs(state.g_res)/state.rel_g_res;
 
-    ctx                 = problem.c(problem.n_free+1:problem.n)'*state.xc;
-    bty                 = problem.b'*state.y;
-    state.relative_gap  = abs( ctx - bty )/( state.tau + abs(bty) );
+    state.ctx           = problem.c(problem.n_free+1:problem.n)'*state.xc;
+    state.bty           = problem.b'*state.y;
+    state.relative_gap  = abs( state.ctx - state.bty )/( state.tau + abs(state.bty) );
 
     %Print the iteration log
     %iter centering iter, 
@@ -588,18 +601,25 @@ for m_iter = 1:pars.max_iter
                          state.relative_gap,state.n_g_res);
     end
     %Evaluate the stopping criteria
-    if(state.n_p_res < pars.stop_primal && state.n_d_res < pars.stop_dual && state.n_g_res < pars.stop_gap)
-        if(state.kappa<state.tau-eps)
-            state.exit_reason  = 'Optimal';
-        elseif (state.kappa>state.tau+eps)
-            state.exit_reason  = 'Infeasible';
-            %XXX detect p.d inf
-        else
-            state.exit_reason = 'Ill Posed';
-        end
-        break;
+    if(state.n_p_res < pars.stop_primal && state.n_d_res < pars.stop_dual)
+        if(state.relative_gap<pars.stop_gap)
+            state.exit_reason = 'Optimal';
+            break;
+        elseif(state.n_g_res < pars.stop_gap && state.tau<pars.stop_tau_kappa*1.e-2*max(1,state.kappa))
+            %In this case it is infeasible, try to detect if it is primal or dual infeasible
+            if(state.ctx < -eps && state.bty < -eps)
+                state.exit_reason  = 'Dual Infeasible';
+            elseif(state.ctx > eps && state.bty > eps)
+                state.exit_reason  = 'Primal Infeasible';
+            end
+            state.exit_reason      = 'Infeasible but undescernible';
+            break;
+        end     
     end
-   
+   if(state.mu < state.mu0*pars.stop_mu*1.e-2&&state.tau<1.e-2*min(1,state.kappa))
+        state.exit_reason = 'Ill Posed';
+        break;
+   end
 end %End of main loop
  
     %Print the final message
