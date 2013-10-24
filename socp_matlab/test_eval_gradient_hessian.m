@@ -47,3 +47,25 @@ H   = blkdiag(Hx,Hs);
 H_eval = eval_socp_hessian(problem,[x;s]);
 fprintf('||H-H_eval||: %g\n',norm(H-H_eval));
 
+%Calculate the centering points for x,s and s,x
+Jx = J*x;
+xJx = x'*Jx;
+Js = J*s;
+sJs = s'*Js;
+sx  = s'*x;
+w_gamma = sqrt((1+(sx/sqrt(sJs*xJx)))/2);
+w      = sqrt(sqrt((xJx/sJs)))*(1/(2*w_gamma))*(x/sqrt(xJx)+1/sqrt(sJs)*J*s);
+w2     = sqrt(sqrt((sJs/xJx)))*(1/(2*w_gamma))*(J*x/sqrt(xJx)+1/sqrt(sJs)*s);
+
+w_func = calculate_nt_scaling(problem,[x;s],[s;x]);
+H_func = eval_socp_hessian(problem,w_func);
+
+Jw    = J*w;
+wJw   = w'*Jw;
+Jw2   = J*w2;
+w2Jw2 = w2'*Jw2; 
+Hw    = 2*Jw*Jw'/(wJw)^2-1/(wJw)*J;
+Hw2  = 2*Jw2*Jw2'/(w2Jw2)^2-1/(w2Jw2)*J;
+
+fprintf('||H[x;s]-H_eval[x;s]||: %g\n',norm(H_func*[x;s]-[Hw*x;Hw2*s]));
+fprintf('||H_eval[x;s]-[s;x]||: %g\n',norm(H_func*[x;s]-[s;x]));

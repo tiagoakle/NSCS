@@ -63,7 +63,9 @@ w      = w_scal*w_hat;
 v     = J*w;
 Hx    = 1/(w'*J*w)^2*2*v*(v'*x)-1/(w'*J*w)*J*x; %The Hessian is given by 1/(wJw)^2 (2*vv'-(wJw)J);
 
-
 fprintf('||H(w)x-s||: %g\n',norm(Hx-s));
+
+%Scaling matrices 
+
 
 
