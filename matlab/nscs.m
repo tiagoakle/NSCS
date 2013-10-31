@@ -34,7 +34,7 @@ warning('off','MATLAB:nearlySingularMatrix');
     pars.backtrack_affine_constant = 0.94;   %Affine backtracking constant
     pars.backtrack_centering_constant = 0.5; %Centering backtracking constant
     pars.beta       = 0.2;                   %Stop centering when ||dx||_H<beta
-    pars.theta      = 0.8;                   %Take an affine stem if ||Psi^+||<theta*mu+
+    pars.theta      = 0.8;                   %Take an affine step if ||Psi^+||<theta*mu+
     pars.eta        = 0.9995;                %Multiple of step to the boundary
     pars.use_nesterov_todd_centering = false; %Use centering points for symmetric cones
     pars.stop_primal= 1e-6;                 %Stopping criteria p_res/rel_p_res<stop_primal.
@@ -48,7 +48,7 @@ warning('off','MATLAB:nearlySingularMatrix');
     %Regularization for the linear solver
     pars.delta      = 5e-10;
     pars.gamma      = 5e-10;
-    pars.max_iter_ref_rounds = 100;
+    pars.max_iter_ref_rounds = 2;
     pars.linear_solver = 'mixed';
     pars.centrality_measure = 1;
 
@@ -133,6 +133,13 @@ state.temp1  = 1/(state.nu+1)*state.temp1;
 qtx          = state.s'*state.xc;
 vtx          = state.temp1'*state.xc;
 state.s      = state.s-(qtx/(vtx+1))*state.temp1;
+
+%Sanity check verify that the dual slack is feasible
+if(~eval_dual_feas(problem,state.s))
+    fprintf('Error, initial dual slack not feasible');
+    return;
+end
+
 
 %Calculate the initial centrality
  dga        = state.xc'*state.s+state.kappa*state.tau;
@@ -270,6 +277,9 @@ for m_iter = 1:pars.max_iter
                 
         end
     end %End of the selection of linear solver
+
+
+    if(pars.print>2) fprintf('||dy|| %g ||dxf|| %g ||dxc|| %g ||dtau|| %g ||ds|| %g ||dkappa|| %g \n ',norm(d.dy),norm(d.dxf),norm(d.dxc),norm(d.dtau),norm(d.ds),norm(d.ds)); end
 
     %this resolves the matlab quirk that does not allow adding 
     %[] to an empty matrix

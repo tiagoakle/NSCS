@@ -2,7 +2,7 @@ function feas = eval_dual_feas(problem,xc)
     feas = 1;
 
     if(problem.n_pos>0)
-        min_pos_ort = min(xc);
+        min_pos_ort = min(xc(1:problem.n_pos));
         if(min_pos_ort<=0) 
             feas = 0;
             return;

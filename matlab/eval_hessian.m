@@ -11,10 +11,9 @@ function [H] = eval_hessian(problem,xc)
     exp_values  = [];
 
     if(problem.n_pos>0)
-        pos_indices_1 = [1:problem.n_pos'];
-        pos_indices_2 = [1:problem.n_pos'];
+        pos_indices_1 = [1:problem.n_pos]';
+        pos_indices_2 = [1:problem.n_pos]';
         pos_values  = 1./(xc(1:problem.n_pos)).^2;
-        index_max = problem.n_pos+1;
     end
     
     if(problem.n_exp_cones>0)
@@ -81,6 +80,5 @@ function [H] = eval_hessian(problem,xc)
                         el32;...
                         el33];
     end
-
     H = sparse([pos_indices_1;exp_indices_1],[pos_indices_2;exp_indices_2],[pos_values;exp_values]);
 end

@@ -5,9 +5,10 @@ function r = eval_tensor(problem,state)
  r = zeros(problem.n_constrained,1);
  temp = zeros(problem.n_constrained,1);
  temp = state.s+state.ds;
-
+ 
+ %Evaluate the tensor of the barrier of the positive orthant
  if(problem.n_pos>0)
-    r(1:problem.n_pos) = 2/state.mu*state.xc.*temp.^2;
+    r(1:problem.n_pos) = 2/state.mu*state.xc(1:problem.n_pos).*temp(1:problem.n_pos).^2;
  end
  
  if(problem.n_exp_cones>0)
@@ -44,12 +45,25 @@ function r = eval_tensor(problem,state)
 %    r(i_e+2*problem.n_exp_cones:i_e+3*problem.n_exp_cones-1) = -1/state.mu*r(i_e+2*problem.n_exp_cones:i_e+3*problem.n_exp_cones-1);
 %
 
-    
-r1 = (z.*(a2.*y + 2.*a1.*z - a3.*z - a1.*z.*log(y./z)).^2)./(2.*z - x + z.*log(y./z)).^2 - 2.*a1.^2.*(x - z.*log(y./z));
-r2 = (2.*z.*(a2.*y - a1.*z).*(a2.*y + 2.*a1.*z - a3.*z - a1.*z.*log(y./z)))./(y.*(2.*z - x + z.*log(y./z))) - (z.^2.*(a2.*y + 2.*a1.*z - a3.*z - a1.*z.*log(y./z)).^2)./(y.*(2.*z - x + z.*log(y./z)).^2) - (2.*(a2.^2.*y.^2 - a1.^2.*z.^2 - a1.^2.*x.*z + 2.*a1.^2.*z.^2.*log(y./z) + a1.*a3.*z.^2 + a1.*a2.*y.*z))./y; 
-r3 = a1.^2.*x - 26.*a1.^2.*z - 2.*a3.^2.*z - 4.*a1.^2.*z.*log(y./z).^2 + ((a1.*x - a2.*y - 4.*a1.*z + a3.*z).*(3.*a1.*x - a2.*y - 14.*a1.*z + 3.*a3.*z))./(2.*z - x + z.*log(y./z)) - 6.*a1.*a2.*y + 12.*a1.*a3.*z + 2.*a1.^2.*x.*log(y./z) + 11.*a1.^2.*z.*log(y./z) - (z.*(log(y./z) + 1).*(a2.*y + 2.*a1.*z - a3.*z - a1.*z.*log(y./z)).^2)./(2.*z - x + z.*log(y./z)).^2 - 4.*a1.*a3.*z.*log(y./z);
+lyz= log(y)-log(z);
+t1 = (a2.*y + 2.*a1.*z - a3.*z - a1.*z.*lyz);
+d1 = (2.*z - x + z.*lyz);
+%r1 = (z.*(a2.*y + 2.*a1.*z - a3.*z - a1.*z.*log(y./z)).^2)./(2.*z - x + z.*log(y./z)).^2 - 2.*a1.^2.*(x - z.*log(y./z));
+%r2 = (2.*z.*(a2.*y - a1.*z).*(a2.*y + 2.*a1.*z - a3.*z - a1.*z.*log(y./z)))./(y.*(2.*z - x + z.*log(y./z))) - (z.^2.*(a2.*y + 2.*a1.*z - a3.*z - a1.*z.*log(y./z)).^2)./(y.*(2.*z - x + z.*log(y./z)).^2) - (2.*(a2.^2.*y.^2 - a1.^2.*z.^2 - a1.^2.*x.*z + 2.*a1.^2.*z.^2.*log(y./z) + a1.*a3.*z.^2 + a1.*a2.*y.*z))./y; 
+%r3 = a1.^2.*x - 26.*a1.^2.*z - 2.*a3.^2.*z - 4.*a1.^2.*z.*log(y./z).^2 + ((a1.*x - a2.*y - 4.*a1.*z + a3.*z).*(3.*a1.*x - a2.*y - 14.*a1.*z + 3.*a3.*z))./(2.*z - x + z.*log(y./z)) - 6.*a1.*a2.*y + 12.*a1.*a3.*z + 2.*a1.^2.*x.*log(y./z) + 11.*a1.^2.*z.*log(y./z) - (z.*(log(y./z) + 1).*(a2.*y + 2.*a1.*z - a3.*z - a1.*z.*log(y./z)).^2)./(2.*z - x + z.*log(y./z)).^2 - 4.*a1.*a3.*z.*log(y./z);
+
+r1 = (z.*t1.^2)./d1.^2 - 2.*a1.^2.*(x - z.*lyz);
+
+r2 = (2.*z.*(a2.*y - a1.*z).*t1)./(y.*d1) - (z.^2.*t1.^2)./(y.*d1.^2) -...
+     (2.*(a2.^2.*y.^2 - a1.^2.*z.^2 - a1.^2.*x.*z + 2.*a1.^2.*z.^2.*lyz + a1.*a3.*z.^2 + a1.*a2.*y.*z))./y; 
+
+r3 = a1.^2.*x - 26.*a1.^2.*z - 2.*a3.^2.*z - 4.*a1.^2.*z.*lyz.^2 +...
+     ((a1.*x - a2.*y - 4.*a1.*z + a3.*z).*(3.*a1.*x - a2.*y - 14.*a1.*z + 3.*a3.*z))./d1 -...
+     6.*a1.*a2.*y + 12.*a1.*a3.*z + 2.*a1.^2.*x.*lyz + 11.*a1.^2.*z.*lyz -...
+     (z.*(lyz + 1).*t1.^2)./d1.^2 - 4.*a1.*a3.*z.*log(y./z);
  
- r = -1/state.mu*[r1;r2;r3];
+ r(i_e:i_e+3*problem.n_exp_cones-1) = -1/state.mu*[r1;r2;r3];
+
  end
  %Add the -2muH(x') term
  r = r-2*temp;

@@ -25,7 +25,7 @@ function [g] = eval_grad(problem,xc)
              end
             
              %Evaluate the exponential cones 
-             %in the interleaced pattern x1s, x2s, x3s
+             %in the pattern [x1s, x2s, x3s]
              if(problem.n_exp_cones>0)
                 x1       = xc(ix:ix+problem.n_exp_cones-1);
                 x2       = xc(ix+problem.n_exp_cones:ix+2*problem.n_exp_cones-1);
@@ -44,7 +44,7 @@ function [g] = eval_grad(problem,xc)
                  tmp2  = [ psim1;...
                      -x2m1.*(x3.*psim1 + 1);...
                      -xi.*psim1 - x3m1];
-                g(ix:ix+problem.n_exp_cones*3-1) = tmp2(:);
+                g(ix:ix+3*problem.n_exp_cones-1) = tmp2(:);
             end
 
 end
