@@ -1,11 +1,11 @@
 clear all
-
+addpath ../../coneopt
 %Create a random entropy problem and
 % solve it with coneopt
     
-   m = 1000;
-   n = 2000;
-   A = randn(m,n);
+   m = 100;
+   n = 200;
+   A = sprandn(m,n,0.5);
    b = A*ones(n,1);
    AA= [sparse(m+n,n),[sparse(m,n);speye(n)],[A;sparse(n,n)]];
    bb= [b;ones(n,1)];
@@ -24,7 +24,7 @@ clear all
     pars.n    = N;
     pars.centmeastype = 5; 
     pars.echo = 4;
-    pars.secord = 1;
+    pars.secord = 0;
 
 
   % starting point:
@@ -35,11 +35,12 @@ clear all
   v0.x  = [u0;v00;x0];
 
 % call to coneopt:
+tic
 R = coneopt(AA,bb,cc,v0,K,pars);
+coneopt_time = toc
 
 % call nscs
-
-  %Extract the problem data and build the problem structure
+%Extract the problem data and build the problem structure
     problem = struct;
     problem.A = AA;
     problem.b = bb;
@@ -59,4 +60,19 @@ R = coneopt(AA,bb,cc,v0,K,pars);
    
 x0c = [u0;v00;x0];
 x0f = [];
+tic 
 nscs
+nscs_time = toc;
+
+%Now call sedumi via CVX
+% Entropy maximization
+tic 
+cvx_begin
+    cvx_solver('sedumi')
+    variable x(n/3)
+    maximize sum(entr(x))
+    A*x == b
+cvx_end
+sedumi_time = toc;
+
+

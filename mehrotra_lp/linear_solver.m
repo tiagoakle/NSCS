@@ -3,7 +3,7 @@ function [dy,dx,dtau,ds,dkappa,res_norm,slv_aug] = linear_solver(H,tau,kappa,A,b
     %regularizations 
     delta = 1.e-10;
     gamma = 1.e-10;
-    max_iter_ref_rounds = 300;
+    max_iter_ref_rounds = 10;
 
     nf = 0;
     print_t = false;

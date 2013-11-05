@@ -2,7 +2,10 @@ clear all
 %Runs the GP instance read by read_gp.m in coneopt
 addpath '../../';
 clear all
-read_gp
+
+%Read a gp
+file_name = './gp/beck751.eo';
+[AA,bb,cc,num_ter,num_var,num_con] = read_gp(file_name);
 
 % starting point:
 t00 = 1;
@@ -17,6 +20,7 @@ problem = struct;
 problem.A = AA;
 problem.b = bb;
 problem.c = cc;
+
 %Problem parameters
 problem.m =2*num_ter + num_con+1;
 problem.n = 3*num_ter + 2*num_var + 1;

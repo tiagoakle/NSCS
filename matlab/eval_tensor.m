@@ -1,6 +1,6 @@
 function r = eval_tensor(problem,state)
  %Evaluates the product
- %1/mu(\nabla^3f)[H^(-1)(s'+s),H^{-1}(s'+s)]
+ %1/mu(\nabla^3f)[H^(-1)(ds+s),H^{-1}(ds+s)] - 2(s+ds)
  %For the first order tensor
  r = zeros(problem.n_constrained,1);
  temp = zeros(problem.n_constrained,1);
@@ -67,5 +67,6 @@ r3 = a1.^2.*x - 26.*a1.^2.*z - 2.*a3.^2.*z - 4.*a1.^2.*z.*lyz.^2 +...
  end
  %Add the -2muH(x') term
  r = r-2*temp;
+ r = r/2;
 end
 

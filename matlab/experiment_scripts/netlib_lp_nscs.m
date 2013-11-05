@@ -5,7 +5,7 @@
   load 'standard_form_indices.mat' 
 
   %Choose a problem from the list
-  problem_index = 5;
+  problem_index = 4;
   %Extract the problem 
   problem_uf_ix = st_ix(problem_index);
   %Get the problem from ufget

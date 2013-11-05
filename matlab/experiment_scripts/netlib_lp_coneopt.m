@@ -58,6 +58,7 @@ clear all
    pars.n = problem.n;
    pars.m = problem.m;
    pars.echo = 4;
+   pars.secord = 0;
    pars.centmeastype = 5;
    %initial point 
    v0 = struct;

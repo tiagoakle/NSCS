@@ -28,8 +28,8 @@ warning('off','MATLAB:nearlySingularMatrix');
 
 %Set up the default parameters
     pars.max_iter   = 100;  %Maximum outer iterations
-    pars.max_affine_backtrack_iter = 300;    %Maximum affine backtracking steps
-    pars.max_centering_backtrack_iter = 300; %Maximum centering backtracking steps
+    pars.max_affine_backtrack_iter = 20;    %Maximum affine backtracking steps
+    pars.max_centering_backtrack_iter = 20; %Maximum centering backtracking steps
     pars.max_c_iter = 50;                    %Maximum centering iterations per affine  iteration
     pars.backtrack_affine_constant = 0.94;   %Affine backtracking constant
     pars.backtrack_centering_constant = 0.5; %Centering backtracking constant
