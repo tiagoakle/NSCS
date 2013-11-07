@@ -8,4 +8,17 @@ DONE:Change the sign of the residuals so that the argument of the solve_atd_dire
 The variables in state p_relstop, d_relstop, g_relstop, are calculated proportional 
 to the inf norm of [A -b], [A' I -c] and [c',b',1]. We need code to do this
 
-
+Things to check;
+0 Figure out when does the non symmetric mehrotra converge with second order info 
+0.b Benchmark mehrotra lp vs non_symmetric_long_step in arc_search and secord mode
+1 Compare ecos with sedumi, and answer if the neighborhood makes it better, match stopping criteria...
+    Instead compare nscs with coneopt and make sure the stopping critera are equal.
+2 Correct the nscs stop criteria to match coneopt
+3 Debug nscs when it fails in the backtrack while coneopt doesnot (Could be allready fixed, changed the max backtrack iter)
+4 Program the 3 directions solver predictor, corrector and second order corrector for arc-search
+5 Try long step in entropy problems
+6 Make a version of the software that uses both the N-T scaling for the symmetric cones and the atd for the entropy
+7 Add SDPs to the implementation
+8 Clean up the matlab version 
+9 Test the full version
+10 C version

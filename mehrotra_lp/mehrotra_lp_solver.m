@@ -86,8 +86,8 @@ function [x,y,s,info] = mehrotra_lp_solver(A,b,c)
         sigma = (1-a_max)^3;
     
         %Build the second order correction term, this should have a better form
-        so       = dx.*ds./x;
-        kt_so    = dtau*dkappa/tau;
+        so       = (1-sigma)*dx.*ds./x;
+        kt_so    = (1-sigma)*dtau*dkappa/tau;
           
         %so    = 0;
         %kt_so = 0;
@@ -143,8 +143,10 @@ function [x,y,s,info] = mehrotra_lp_solver(A,b,c)
         
         gap   = (mu*(nu+1)-tau*kappa)/tau;
         
-        fprintf('%2i a %3.3e pr %3.3e dr %3.3e gr %3.3e mu %3.3e gap %3.3e k/t %3.3e res_cent %3.3e\n',iter,a,nrp/(nrp0*tau),nrd/(nrd0*tau),nrg,mu,gap,kappa/tau,residual_norm_c);
-        if(nrp < 1.e-8 && nrd < 1.e-8 && mu <mu0*1.e-8)
+        fprintf('%2i a %3.3e pr %3.3e dr %3.3e gr %3.3e mu %3.3e gap %3.3e k/t %3.3e res_cent %3.3e\n',...
+                iter,a,nrp/(nrp0*tau),nrd/(nrd0*tau),nrg,mu,gap,kappa/tau,residual_norm_c);
+
+        if(nrp/nrp0 < 1.e-8 && nrd/nrd0 < 1.e-8 && mu/mu0 < 1.e-8)
             break;
         end
     end %end main loop
@@ -153,5 +155,6 @@ function [x,y,s,info] = mehrotra_lp_solver(A,b,c)
     s = s/tau;
     y = y/tau;
     info = struct;
+    info.iter = iter;
 end
 

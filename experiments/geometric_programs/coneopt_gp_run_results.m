@@ -2,7 +2,7 @@ clear all
 %Runs all GP problems in coneopt
 %Saves the results to the table stored in 
 % the tex file 'coneopt_gp_run_results.tex'
-addpath '../../../coneopt'
+addpath '../../coneopt'
 
 %Short and easy
 problem_names = {...

@@ -2,8 +2,8 @@
 %executes nscs and coneopt
 
 clear all
-  addpath '../'
-  addpath '../../coneopt'
+  addpath '../matlab'
+  addpath '../coneopt'
   %Load the file that contains the indices for the
   %ufget netlib lps which are in standard form
   load 'standard_form_indices.mat' 

@@ -30,13 +30,15 @@ warning('off','MATLAB:nearlySingularMatrix');
     pars.max_iter   = 100;  %Maximum outer iterations
     pars.max_affine_backtrack_iter = 300;    %Maximum affine backtracking steps
     pars.backtrack_affine_constant = 0.8;   %Affine backtracking constant
-    pars.eta        = 0.9995;                %Multiple of step to the boundary
+
+    %XXX: changed from 0.98 for gp testing
+    pars.eta        = 0.5;                %Multiple of step to the boundary
     pars.use_nesterov_todd_centering = false; %Use centering points for symmetric cones
-    pars.stop_primal= 1e-6;                 %Stopping criteria p_res/rel_p_res<stop_primal.
-    pars.stop_dual  = 1e-6;
-    pars.stop_gap   = 1e-6;
-    pars.stop_mu    = 1e-6;
-    pars.stop_tau_kappa = 1.e-6;
+    pars.stop_primal= 1e-5;                 %Stopping criteria p_res/rel_p_res<stop_primal.
+    pars.stop_dual  = 1e-5;
+    pars.stop_gap   = 1e-5;
+    pars.stop_mu    = 1e-5;
+    pars.stop_tau_kappa = 1.e-7;
     pars.solve_second_order = true;
 
     pars.print      = 1;                     %Level of verbosity from 0 to 11
@@ -335,7 +337,11 @@ for m_iter = 1:pars.max_iter
     r3             = (1-sigma)*state.g_res; 
     %Legacy from coneopt these are backwards
     r4             = sigma*state.mu - state.tau*state.kappa - (1-sigma)*state.dtau*state.dkappa;
-    r5             = -state.s-sigma*state.mu*state.g + (1-sigma)^3*correction_term;
+    r5             = -state.s-sigma*state.mu*state.g;
+    if pars.solve_second_order 
+        r5             = r5 + (1-sigma)^3*0.5*correction_term;
+    end
+
     
     %Call the solver be sure to re-use the factorization
     d              = solve_linear_system(H,state.mu,state.kappa,state.tau,problem,pars,r1,r2,r3,r4,r5,factorization);
@@ -426,8 +432,14 @@ for m_iter = 1:pars.max_iter
     %------------------------------------------------------------
     %Calculate the residuals
     state.p_res         =  problem.b*state.tau-problem.A*[state.xf;state.xc];
+    %We just need the norm of ph_res so make it more efficient
+    state.ph_res        =  problem.A*[state.xf;state.xc];
     state.d_res         = -problem.c*state.tau+problem.A'*state.y;
     state.d_res(nf+1:n) = state.d_res(nf+1:n) + state.s;
+    %We just need the norm of dh_res so make it mrore efficient
+    state.dh_res         = problem.A'*state.y;
+    state.dh_res(nf+1:n) = state.dh_res(nf+1:n) + state.s;
+
     if(~isempty(state.xf)) %If state.xf is empty then the c'x would result in an empty matrix
         cfxf = problem.c(1:nf)'*state.xf;
     else
@@ -439,11 +451,15 @@ for m_iter = 1:pars.max_iter
     state.n_p_res       = norm(state.p_res,'inf')/state.rel_p_res;
     state.n_d_res       = norm(state.d_res,'inf')/state.rel_d_res;
     state.n_g_res       = abs(state.g_res)/state.rel_g_res;
+    
+
+    state.n_ph_res      = norm(state.ph_res,'inf')/state.rel_p_res;
+    state.n_dh_res      = norm(state.dh_res,'inf')/state.rel_d_res;
 
     state.ctx           = problem.c(problem.n_free+1:problem.n)'*state.xc;
     state.bty           = problem.b'*state.y;
     state.relative_gap  = abs( state.ctx - state.bty )/( state.tau + abs(state.bty) );
-
+   
     %Print the iteration log
     %iter centering iter, 
    if(pars.print>0) 
@@ -454,8 +470,7 @@ for m_iter = 1:pars.max_iter
                          state.n_p_res,state.n_d_res,...
                          state.relative_gap,state.n_g_res);
     end
-  
-    
+ 
     %Evaluate the stopping criteria
     %---------------------------------------------------------
     if(state.n_p_res < pars.stop_primal && state.n_d_res < pars.stop_dual)
