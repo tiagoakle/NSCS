@@ -63,10 +63,10 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
     gap  = c'*x-b'*y;
 
     %Algorithm parameters
-    strategy = 'secord'; %Can be arc_search secord or linear
     max_arc_backtrack_iter = 300;
     arc_search_backtrack_scale = 0.8; 
-    max_iter = 100;
+    eta_scaling            = 0.8;
+    max_iter = 200;
 
     fprintf('%2i a       %3.3e pr %3.3e dr %3.3e gr %3.3e mu %3.3e gap %3.3e k/t %3.3e res_cent %3.3e\n',0,nan,nrp/(nrp0*tau),nrd/(nrd0*tau),nrg,mu,gap,kappa/tau,nan);
 
@@ -91,7 +91,7 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
         kt_so = 0;
         if(~strcmp(strategy,'linear'))
             temp = s+ds;
-            so   = (1-sigma)*0.5/mu*x.*(temp.^2)-temp;
+            so   =  (1-sigma)*(0.5/mu*x.*(temp.^2)-temp);
             kt_so= -(1-sigma)*dtau*dkappa/tau;
             clear temp
         end
@@ -121,7 +121,7 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
             %Find the largest step to the boundary
             ratios = [-x./dx_c;-s./ds_c;-tau/dtau_c;-kappa/dkappa_c;1];
             a_max  = min(ratios(find(ratios>0)));
-            a       = a_max*0.8; 
+            a       = a_max*eta_scaling; 
             
             x_old = x;
             y_old = y;
@@ -159,7 +159,7 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
                 break;
             end
             %one more scaling to move away from the boundary
-            a = a*0.8;
+            a = a*eta_scaling;
 
             y         = y_old+a*dy_c+a^2*dy_s;
             x         = x_old+a*dx_c+a^2*dx_s;
