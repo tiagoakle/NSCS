@@ -207,7 +207,7 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
     y = y/tau;
     info = struct;
     info.iter = iter;
-    if(~strcmp(exit_reason,'finished')
+    if(~strcmp(exit_reason,'finished'))
         info.iter = -1;
     end
 end
