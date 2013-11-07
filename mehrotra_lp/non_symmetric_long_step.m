@@ -69,7 +69,7 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
     max_iter = 200;
 
     fprintf('%2i a       %3.3e pr %3.3e dr %3.3e gr %3.3e mu %3.3e gap %3.3e k/t %3.3e res_cent %3.3e\n',0,nan,nrp/(nrp0*tau),nrd/(nrd0*tau),nrg,mu,gap,kappa/tau,nan);
-
+    exit_reason = '';
     %--------------------------------------
     %Main iteration
     for iter=1:max_iter
@@ -156,6 +156,7 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
             end
             if(j==max_arc_backtrack_iter)
                 fprintf('Unable to find feasible arc point\n');
+                exit_reason = 'Backtrack fail';
                 break;
             end
             %one more scaling to move away from the boundary
@@ -178,7 +179,8 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
         s_slack = min(s);
         if(x_slack<0||s_slack<0||tau<0||kappa<0)
             fprintf('Infeasible centering step \n');
-            return;
+            exit_reason = 'Infeas centering';
+            break;
         end
     
         %--------------------
@@ -195,6 +197,7 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
         
         fprintf('%2i a %3.3e s %3.3e pr %3.3e dr %3.3e gr %3.3e mu %3.3e gap %3.3e k/t %3.3e res_cent %3.3e\n',iter,a,sigma,nrp/(nrp0*tau),nrd/(nrd0*tau),nrg,mu,gap,kappa/tau,residual_norm_c);
         if(nrp/(nrp0) < 1.e-8 && nrd/(nrd0) < 1.e-8 && mu/mu0 < 1.e-8)
+            exit_reason = 'finished';
             break;
         end
     end %end main loop
@@ -204,5 +207,8 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
     y = y/tau;
     info = struct;
     info.iter = iter;
+    if(~strcmp(exit_reason,'finished')
+        info.iter = -1;
+    end
 end
 
