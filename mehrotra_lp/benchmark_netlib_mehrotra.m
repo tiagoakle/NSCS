@@ -48,4 +48,6 @@ for j = 1:problem_count
                                          results{k}{3},results{k}{4},...
                                          results{k}{5},results{k}{6});
     end
+    %Save the present progress
+    save('mehrotra_lpnetlib_benchmark.mat','results');
 end
