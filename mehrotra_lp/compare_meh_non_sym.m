@@ -9,7 +9,7 @@ clear all
   load 'standard_form_indices.mat' 
 
   %Choose a problem from the list
-  problem_index = 7;
+  problem_index = 11;
   %Extract the problem 
   problem_uf_ix = st_ix(problem_index);
   %Get the problem from ufget
@@ -26,9 +26,9 @@ clear all
   b = P.b;
   c = P.aux.c;
 fprintf('Problem %s \n',prob_name); 
-[x,y,s,info] = mehrotra_lp_solver(A,b,c);
-[x_ns,y_ns,s_ns,info_none] = non_symmetric_long_step(A,b,c,'linear');
-[x_ns,y_ns,s_ns,info_ns] = non_symmetric_long_step(A,b,c,'arc_search');
+%[x,y,s,info] = mehrotra_lp_solver(A,b,c);
+%[x_ns,y_ns,s_ns,info_none] = non_symmetric_long_step(A,b,c,'linear');
+%[x_ns,y_ns,s_ns,info_ns] = non_symmetric_long_step(A,b,c,'arc_search');
 [x_ns,y_ns,s_ns,info_ns] = non_symmetric_long_step(A,b,c,'secord');
 %
 %%now call ecos 

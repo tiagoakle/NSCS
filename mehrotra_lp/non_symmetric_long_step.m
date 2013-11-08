@@ -66,14 +66,16 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
     max_arc_backtrack_iter = 300;
     arc_search_backtrack_scale = 0.8; 
     eta_scaling            = 0.8;
-    max_iter = 200;
+    max_iter = 100;
 
     fprintf('%2i a       %3.3e pr %3.3e dr %3.3e gr %3.3e mu %3.3e gap %3.3e k/t %3.3e res_cent %3.3e\n',0,nan,nrp/(nrp0*tau),nrd/(nrd0*tau),nrg,mu,gap,kappa/tau,nan);
     exit_reason = '';
+
+    a = 1;
     %--------------------------------------
     %Main iteration
     for iter=1:max_iter
-       
+         
         %Evaluate the hessian and scaled variables 
         %Solve the aproximate affine scaling direction
         H = diag(sparse(mu*(1./x).^2));
@@ -91,8 +93,8 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
         kt_so = 0;
         if(~strcmp(strategy,'linear'))
             temp = s+ds;
-            so   =  (1-sigma)*(0.5/mu*x.*(temp.^2)-temp);
-            kt_so= -(1-sigma)*dtau*dkappa/tau;
+            so   =  (a)*(0.5/mu*x.*(temp.^2)-temp);
+            kt_so= -(a)*dtau*dkappa/tau;
             clear temp
         end
 
@@ -159,8 +161,10 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
                 exit_reason = 'Backtrack fail';
                 break;
             end
-            %one more scaling to move away from the boundary
-            a = a*eta_scaling;
+            if(j>1)
+                %one more scaling to move away from the boundary
+                a = a*eta_scaling;
+            end
 
             y         = y_old+a*dy_c+a^2*dy_s;
             x         = x_old+a*dx_c+a^2*dx_s;
@@ -178,8 +182,10 @@ function [x,y,s,info] = non_symmetric_long_step(A,b,c,strategy)
         x_slack = min(x);
         s_slack = min(s);
         if(x_slack<0||s_slack<0||tau<0||kappa<0)
-            fprintf('Infeasible centering step \n');
+            fprintf('Infeasible centering step, a: %g \n',a);
             exit_reason = 'Infeas centering';
+            a = 1;
+            min(x_old+a*dx_c+a^2*dx_s)
             break;
         end
     

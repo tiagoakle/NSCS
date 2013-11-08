@@ -16,8 +16,8 @@ problem_count = length(st_ix);
 fid = 1;
 fprintf(fid,'Will benchmark against %i problems\n',length(st_ix));
 
-results = {{'PNAME','MLS','MLSSO','MLSAS','m','n'}};
-for j = 1:problem_count
+results = {{'PNAME','MLS','MLSSO','m','n'}};
+for j = 1:2
     %Get the ufget id 
     problem_uf_ix = st_ix(j);
     %Get the problem from ufget
@@ -35,18 +35,18 @@ for j = 1:problem_count
     %Call the solvers 
     [x,y,s,info] = mehrotra_lp_solver(A,b,c);
     [x_ns,y_ns,s_ns,info_ns_se] = non_symmetric_long_step(A,b,c,'secord');
-    [x_ns,y_ns,s_ns,info_ns_as] = non_symmetric_long_step(A,b,c,'arc_search');
+    %[x_ns,y_ns,s_ns,info_ns_as] = non_symmetric_long_step(A,b,c,'arc_search');
     
     %Append the new results 
-    results = {results{:},{prob_name,info.iter,info_ns_as.iter,info_ns_se.iter,m,n}};
+    results = {results{:},{prob_name,info.iter,info_ns_se.iter,m,n}};
 
     %Print the results so far
-    fprintf('%25s %6s %6s %6s %4s %4s\n',results{1}{1},results{1}{2},results{1}{3},...
-                                results{1}{4},results{1}{5},results{1}{6});
+    fprintf('%25s %6s %6s %6s %4s\n',results{1}{1},results{1}{2},results{1}{3},...
+                                results{1}{4},results{1}{5});
     for k = 2:j+1
-        fprintf('%25s   %3i    %3i    %3i  %4i  %4i\n',results{k}{1},results{k}{2},...
+        fprintf('%25s   %3i    %3i    %3i  %4i\n',results{k}{1},results{k}{2},...
                                          results{k}{3},results{k}{4},...
-                                         results{k}{5},results{k}{6});
+                                         results{k}{5});
     end
     %Save the present progress
     save('mehrotra_lpnetlib_benchmark.mat','results');
