@@ -25,27 +25,10 @@ addpath '../../coneopt/'
 %Quiet the matlab warning about bad scaling
 warning('off','MATLAB:nearlySingularMatrix');
 
-
-%Set up the default parameters
-    pars.max_iter   = 100;  %Maximum outer iterations
-    pars.max_affine_backtrack_iter = 300;    %Maximum affine backtracking steps
-    pars.backtrack_affine_constant = 0.9;   %Affine backtracking constant
-
-    %XXX: changed from 0.98 for gp testing
-    pars.eta        = 0.98;                %Multiple of step to the boundary
-    pars.use_nesterov_todd_centering = false; %Use centering points for symmetric cones
-    pars.stop_primal= 1e-5;                 %Stopping criteria p_res/rel_p_res<stop_primal.
-    pars.stop_dual  = 1e-5;
-    pars.stop_gap   = 1e-5;
-    pars.stop_mu    = 1e-7;
-    pars.stop_tau_kappa = 1.e-7;
-    pars.solve_second_order = true;
-
-    pars.print      = 1;                     %Level of verbosity from 0 to 11
-    %Regularization for the linear solver
-    pars.delta      = 5e-10;
-    pars.gamma      = 5e-10;
-    pars.max_iter_ref_rounds = 20;
+%If pars is not defined get the default 
+if ~exist('pars') 
+    set_default_pars_nscs_long_step
+end
 
 %------------------------------------------------
 % Validate problem input and initialize the state
@@ -200,10 +183,10 @@ for m_iter = 1:pars.max_iter
     %Solve the linear system
     %-------------------------
     %Evaluate the hessian either at X or at the centering point
-    if(pars.use_nesterov_todd_centering)
+    if(pars.use_nesterov_todd_scaling)
         %If Nesterov Todd centering is enabled
         %Caclulate the hessians at the nt scaling points 
-        H = eval_hessian_nt(problem,state.xc,state.s); 
+        H = eval_hessian_nt(problem,state.xc,state.s,state.mu); 
     else
         H = eval_hessian(problem,state.xc);
     end
@@ -329,7 +312,7 @@ for m_iter = 1:pars.max_iter
     sigma = (1-state.a_affine)^3;
     
     %Calculate the correction term 
-    correction_term = eval_tensor(problem,state);
+    correction_term = eval_tensor(problem,state,pars);
 
     %Build the rhs
     r1             = (1-sigma)*state.p_res;
@@ -338,11 +321,18 @@ for m_iter = 1:pars.max_iter
     %Legacy from coneopt these are backwards
     r4             = sigma*state.mu - state.tau*state.kappa - (1-sigma)*state.dtau*state.dkappa;
     r5             = -state.s-sigma*state.mu*state.g;
-    if pars.solve_second_order 
+    if (pars.solve_second_order && ~pars.use_nesterov_todd_scaling)
+        %XXX the 1-sigma changes the algorithm and is not merhotra's !!!
         r5             = r5 + (1-sigma)^3*0.5*correction_term;
+    elseif(pars.solve_second_order && pars.use_nesterov_todd_scaling) 
+        %Add the correction to the exponential cone part 
+        i_e = problem.n_pos + sum(problem.soc_cones) + sum(problem.sdp_cones.^2)+1;
+        r5(i_e:i_e+3*problem.n_exp_cones-1) = r5(i_e:i_e+3*problem.n_exp_cones-1) + ...
+            (1-sigma)^3*0.5*correction_term(i_e:i_e+3*problem.n_exp_cones-1);
+        %Add the correction for the symmetric part
+        r5(1:problem.n_pos) = r5(1:problem.n_pos) + 0.5*(1-sigma)*correction_term(1:problem.n_pos);
     end
-
-    
+ 
     %Call the solver be sure to re-use the factorization
     d              = solve_linear_system(H,state.mu,state.kappa,state.tau,problem,pars,r1,r2,r3,r4,r5,factorization);
     state.dy       = d.dy;

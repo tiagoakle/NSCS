@@ -1,16 +1,27 @@
-function r = eval_tensor(problem,state)
+function r = eval_tensor(problem,state,pars)
  %Evaluates the product
  %1/mu(\nabla^3f)[H^(-1)(ds+s),H^{-1}(ds+s)] - 2(s+ds)
  %For the first order tensor
+
+ %XXX: When usin NT scaling temp can be shorter....
  r = zeros(problem.n_constrained,1);
  temp = zeros(problem.n_constrained,1);
- temp = state.s+state.ds;
+ temp = state.s+state.ds; 
  
- %Evaluate the tensor of the barrier of the positive orthant
- if(problem.n_pos>0)
+ %Evaluate the tensor of the barrier of the positive orthant in the non 
+ %symmetric case
+ if(problem.n_pos>0 && ~pars.use_nesterov_todd_scaling)
     r(1:problem.n_pos) = 2/state.mu*state.xc(1:problem.n_pos).*temp(1:problem.n_pos).^2;
+     %Add the -2muH(x') term
+    r(1:problem.n_pos) = r(1:problem.n_pos) -2*temp(1:problem.n_pos);
  end
- 
+  
+ %Evaluate the tensor of the barrier of the positive orthant in the
+ %symmetric case
+ if(problem.n_pos>0 && pars.use_nesterov_todd_scaling)
+    r(1:problem.n_pos) = -2*(state.dxc(1:problem.n_pos).*state.ds(1:problem.n_pos)./state.xc(1:problem.n_pos));
+ end
+
  if(problem.n_exp_cones>0)
     %Calculate the index of the first variable of the exponential cones
     i_e = problem.n_pos + sum(problem.soc_cones) + sum(problem.sdp_cones.^2)+1;
@@ -39,9 +50,9 @@ function r = eval_tensor(problem,state)
          (z.*(lyz + 1).*t1.^2)./d1.^2 - 4.*a1.*a3.*z.*log(y./z);
      
      r(i_e:i_e+3*problem.n_exp_cones-1) = -1/state.mu*[r1;r2;r3];
-    
+     %Add the -2muH(x') term
+     r(i_e:i_e+3*problem.n_exp_cones-1) = r(i_e:i_e+3*problem.n_exp_cones-1)-2*temp(i_e:i_e+3*problem.n_exp_cones-1); 
  end
- %Add the -2muH(x') term
- r = r-2*temp;
+
 end
 

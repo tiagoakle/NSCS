@@ -1,8 +1,12 @@
 %Runs a set of GPs in coneopt, nscs and nscs long_step
 clear all
-%Runs all GP problems in coneopt
+
+%Runs a short selection of fast to solve problems 
+% uses coneopt, nscs_long_step with nt scaling and 
+% nscs_long_step with no nt scaling
+
 %Saves the results to the table stored in 
-% the tex file 'coneopt_gp_run_results.tex'
+% the mat file 'compare_gp_run_result.mat'
 addpath '../../coneopt'
 addpath '../../matlab'
 %Short and easy
@@ -24,8 +28,7 @@ problem_names = {...
 %'mra01.eo'}; %Commented out for speed
 
 %Cell array for the results
-results = {{'Prob name','KKT coneopt','Coneopt Status','nscs ls KKT','nscs ls status','nscs kkt','nscs status'}};
-
+results = {{'Prob name','KKT coneopt','Coneopt Status','nscs ls KKT','nscs ls status','nscs lsnt kkt','nscs lsnt status'}};
 problem_count = size(problem_names,2);
 for(j =1:problem_count)
     
@@ -111,29 +114,32 @@ for(j =1:problem_count)
     problem.n_exp_cones   = num_ter;
     problem.n_power_cones = 0;
    
-    %Algorithm parameters
-    pars.solve_second_order = true;
-
     x0c  = [t00;up0;um0;w00;v00;y00];
     x0f  = [];
 
-    nscs 
-    nscs_kkt = state.kkt_solves; 
-    nscs_sta = state.exit_reason;
-     
+    %Populate the default structure 
+    set_default_pars_nscs_long_step;
     %--------------------------------------------------------------------------
-    % Solve with nscs long step
+    % Solve with nscs long step no nt
     %--------------------------------------------------------------------------
+    pars.use_nesterov_todd_scaling = false;
     nscs_long_step
     nscs_ls_kkt = state.kkt_solves; 
     nscs_ls_sta = state.exit_reason;
-     
+
+    %--------------------------------------------------------------------------
+    % Solve with nscs long step with nt scaling
+    %--------------------------------------------------------------------------
+    pars.use_nesterov_todd_scaling = true;
+    nscs_long_step
+    nscs_lsnt_kkt = state.kkt_solves; 
+    nscs_lsnt_sta = state.exit_reason;
+      
     %--------------------------------------------------------------------------
     % Save the results 
     %--------------------------------------------------------------------------
-    problem_result = {problem_names{j},cone_kkt,cone_sta,...
-                      nscs_ls_kkt,nscs_ls_sta,...
-                      nscs_kkt,nscs_sta};
+    problem_result = {problem_names{j},cone_kkt,cone_sta,nscs_ls_kkt,nscs_ls_sta,...
+                      nscs_lsnt_kkt,nscs_lsnt_sta};
     results = {results{:},problem_result};
  
 end
