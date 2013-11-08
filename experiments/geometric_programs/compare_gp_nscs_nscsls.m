@@ -112,7 +112,7 @@ for(j =1:problem_count)
     problem.n_power_cones = 0;
    
     %Algorithm parameters
-    pars.solve_second_order = false;
+    pars.solve_second_order = true;
 
     x0c  = [t00;up0;um0;w00;v00;y00];
     x0f  = [];

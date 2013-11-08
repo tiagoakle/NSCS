@@ -616,7 +616,7 @@ for m_iter = 1:pars.max_iter
         if(state.relative_gap<pars.stop_gap)
             state.exit_reason = 'Optimal';
             break;
-        elseif(state.n_g_res < pars.stop_gap && state.tau<pars.stop_tau_kappa*1.e-2*max(1,state.kappa))
+        elseif(state.n_g_res < pars.stop_gap && state.tau<pars.stop_tau_kappa*max(1,state.kappa))
             %In this case it is infeasible, try to detect if it is primal or dual infeasible
             if(state.ctx < -eps && state.bty < -eps)
                 state.exit_reason  = 'Dual Infeasible';
@@ -627,7 +627,7 @@ for m_iter = 1:pars.max_iter
             break;
         end     
     end
-   if(state.mu < state.mu0*pars.stop_mu*1.e-2&&state.tau<1.e-2*min(1,state.kappa))
+   if(state.mu < state.mu0*pars.stop_mu&&state.tau<1.e-2*min(1,state.kappa))
         state.exit_reason = 'Ill Posed';
         break;
    end

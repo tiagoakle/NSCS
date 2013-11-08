@@ -29,15 +29,15 @@ warning('off','MATLAB:nearlySingularMatrix');
 %Set up the default parameters
     pars.max_iter   = 100;  %Maximum outer iterations
     pars.max_affine_backtrack_iter = 300;    %Maximum affine backtracking steps
-    pars.backtrack_affine_constant = 0.8;   %Affine backtracking constant
+    pars.backtrack_affine_constant = 0.9;   %Affine backtracking constant
 
     %XXX: changed from 0.98 for gp testing
-    pars.eta        = 0.5;                %Multiple of step to the boundary
+    pars.eta        = 0.98;                %Multiple of step to the boundary
     pars.use_nesterov_todd_centering = false; %Use centering points for symmetric cones
     pars.stop_primal= 1e-5;                 %Stopping criteria p_res/rel_p_res<stop_primal.
     pars.stop_dual  = 1e-5;
     pars.stop_gap   = 1e-5;
-    pars.stop_mu    = 1e-5;
+    pars.stop_mu    = 1e-7;
     pars.stop_tau_kappa = 1.e-7;
     pars.solve_second_order = true;
 
@@ -452,10 +452,6 @@ for m_iter = 1:pars.max_iter
     state.n_d_res       = norm(state.d_res,'inf')/state.rel_d_res;
     state.n_g_res       = abs(state.g_res)/state.rel_g_res;
     
-
-    state.n_ph_res      = norm(state.ph_res,'inf')/state.rel_p_res;
-    state.n_dh_res      = norm(state.dh_res,'inf')/state.rel_d_res;
-
     state.ctx           = problem.c(problem.n_free+1:problem.n)'*state.xc;
     state.bty           = problem.b'*state.y;
     state.relative_gap  = abs( state.ctx - state.bty )/( state.tau + abs(state.bty) );
@@ -477,7 +473,7 @@ for m_iter = 1:pars.max_iter
         if(state.relative_gap<pars.stop_gap)
             state.exit_reason = 'Optimal';
             break;
-        elseif(state.n_g_res < pars.stop_gap && state.tau<pars.stop_tau_kappa*1.e-2*max(1,state.kappa))
+        elseif(state.n_g_res < pars.stop_gap && state.tau<pars.stop_tau_kappa*max(1,state.kappa))
             %In this case it is infeasible, try to detect if it is primal or dual infeasible
             if(state.ctx < -eps && state.bty < -eps)
                 state.exit_reason  = 'Dual Infeasible';
@@ -488,7 +484,7 @@ for m_iter = 1:pars.max_iter
             break;
         end     
     end
-   if(state.mu < state.mu0*pars.stop_mu*1.e-2&&state.tau<1.e-2*min(1,state.kappa))
+   if(state.mu < state.mu0*pars.stop_mu&&state.tau<1.e-2*min(1,state.kappa))
         state.exit_reason = 'Ill Posed';
         break;
    end
