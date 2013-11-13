@@ -70,9 +70,9 @@ problem_names = {...
 %'cx02-200.eo'};
 
 %Cell array for the results
-results = {{'Prob name','KKT coneopt','Coneopt Status','nscs ls KKT','nscs ls status',...
-                                                      'nscs lsnt KKT','nscs lsnt status',...
-                                                            'nscs kkt','nscs status'}};
+results = {{'Prob name','co','status','lstep','status','lstepn','status',...
+                                      'lstep fo','status','predcor','status'}};
+                                     
 fid = 1;
 problem_count = size(problem_names,2);
 for(j =1:problem_count)
@@ -98,7 +98,7 @@ for(j =1:problem_count)
     pars.m = 2*num_ter + num_con+1;
     pars.echo = 4;
 
-%    pars.secord = 1;
+    pars.secord = 1;
     pars.cnbfgsstps = 3;
     pars.theta = 0.7;
     pars.eta   = 0.5;
@@ -111,7 +111,6 @@ for(j =1:problem_count)
     pars.rhoI  = 1e-7;
     pars.rhoM  = 1e-7;
 
-    %pars.centmeastype = 5;
     
     % starting point:
     t00 = 1;
@@ -188,6 +187,15 @@ for(j =1:problem_count)
     nscs_long_step
     nscs_lsnt_kkt = state.kkt_solves; 
     nscs_lsnt_sta = state.exit_reason;
+ 
+    %--------------------------------------------------------------------------
+    % Solve with nscs long step and using nt scaling and no second order
+    %-------------------------------------------------------------------------- 
+    pars.use_nesterov_todd_scaling = true;
+    pars.solve_second_order        = false;
+    nscs_long_step
+    nscs_lsntfo_kkt = state.kkt_solves; 
+    nscs_lsntfo_sta = state.exit_reason;
 
     %--------------------------------------------------------------------------
     % Save the results 
@@ -195,23 +203,26 @@ for(j =1:problem_count)
     problem_result =   {problem_names{j},cone_kkt,cone_sta,...
                         nscs_ls_kkt,nscs_ls_sta,...
                         nscs_lsnt_kkt,nscs_lsnt_sta,...
+                        nscs_lsntfo_kkt,nscs_lsntfo_sta,...
                         nscs_kkt,nscs_sta};
     results        =   {results{:},problem_result};
 
     %Print out after every iteration 
-       fprintf(fid,'%s, %s, %s, %s, %s, %s, %s, %s, %s\n',...
+       fprintf(fid,'%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s\n',...
                                                   results{1}{1},results{1}{2},...
                                                   results{1}{3},results{1}{4},...
                                                   results{1}{5},results{1}{6},...
                                                   results{1}{7},results{1}{8},...
-                                                  results{1}{9});
+                                                  results{1}{9},results{1}{10},...
+                                                  results{1}{11});
     for j=2:size(results,2)
-       fprintf(fid,'%10s, %3i, %15s, %3i, %15s, %3i, %15s, %3i, %15s \n',...
+       fprintf(fid,'%10s, %3i, %15s, %3i, %15s, %3i, %15s, %3i, %15s, %3i, %15s \n',...
                                                   results{j}{1},results{j}{2},...
                                                   results{j}{3},results{j}{4},...
                                                   results{j}{5},results{j}{6},...
-                                                  results{j}{7},results{1}{8},...
-                                                  results{1}{9});
+                                                  results{j}{7},results{j}{8},...
+                                                  results{j}{9},results{j}{10},...
+                                                  results{j}{11});
 
     end
  
