@@ -234,7 +234,7 @@ for m_iter = 1:pars.max_iter
         %And eventually the Mehrota predictor corrector not implemented yet
         if(pars.solve_second_order)
              
-             state.g        = eval_grad(problem,state.xc);
+             state.g        = eval_grad(problem,state);
             %d              = solve_linear_system(H,state.mu,state.kappa,state.tau,problem,pars,...
             %                 zeros(size(state.p_res)),zeros(size(state.d_res)),0,-state.dtau*state.dkappa,2*state.mu*(state.xc.^(-3)).*(state.dxc.^2)+2*(-state.s-state.ds),factorization);
             rhs             = eval_tensor(problem,state,pars);

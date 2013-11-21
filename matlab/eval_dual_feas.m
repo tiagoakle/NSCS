@@ -8,7 +8,18 @@ function feas = eval_dual_feas(problem,xc)
             return;
         end
     end
-    
+
+    if(problem.n_soc_cones>0)
+        i_e=problem.n_pos+1;
+        for(k=1:problem.n_soc_cones)
+            if(xc(i_e)<norm(xc(i_e+1:i_e+problem.soc_cones(k)-1)))
+                feas = 0;
+                return;
+            end
+            i_e = i_e+problem.soc_cones(k);
+        end
+    end
+
     if(problem.n_exp_cones>0)
         %Index of the first exponential variable
         i_e = problem.n_pos+sum(problem.soc_cones)+sum(problem.sdp_cones.^2)+1;
