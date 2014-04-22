@@ -69,7 +69,7 @@ problem_names = {...
 %'cx02-100.eo',...
 %'cx02-200.eo'};
 
-%Cell array for the results
+%Define the cell array for the results and include the header
 results = {{'Prob name','co','status','lstep','status','lstepn','status',...
                                       'lstep fo','status','predcor','status'}};
                                      
@@ -172,6 +172,7 @@ for(j =1:problem_count)
      
     set_default_pars_nscs_long_step;
     pars.max_iter = 200;
+
     %--------------------------------------------------------------------------
     % Solve with nscs long step and no nt scaling
     %--------------------------------------------------------------------------

@@ -22,6 +22,10 @@ t_0 = 1;
 k_0 = 1;
 o_0 = 1;
 
+%make a starting point not so off center but with one bad entry
+x_0(1) = 1.e-10
+s_0(1) = 1.e-10
+
 %move the starting point far off center
 x_0 = x_0.^5
 x_0 = 1000*x_0/max(x_0)
@@ -52,12 +56,14 @@ logt  = @(x,s,t,k) rho*log(x'*s+t*k);
 centering_term = @(x,s,t,k) nu^2/sigma^2*norm([x.*s;t*k]/(x'*s+t+k)-sigma/nu)^2;
 
 phi_2 = @(x,s,t,k) f(x,t) + centering_term(x,s,t,k) + logt(x,s,t,k)
+norms = @(x,s) norm(x.*s)^2
 
 cent_hist = zeros(max_iter,1);
 phi2_hist = zeros(max_iter,1);
 logt_hist = zeros(max_iter,1);
 f_hist    = zeros(max_iter,1);
 mu_hist   = zeros(max_iter,1);
+norms_hist= zeros(max_iter,1);
 
 o_hist     = zeros(max_iter,1);
 linf_hist  = zeros(max_iter,1);
@@ -84,7 +90,7 @@ for iter = 1:max_iter
     o_hist(iter)     = o;
     tomu_hist(iter)  = o*mu_0/mu;
     mu_hist(iter)    = (x'*s+t*k)/nu;
-  
+    norms_hist(iter) = norms(x,s);
     %Check that the linear constraints are satisfied
     linf_hist(iter) = norm(G*[y;x;t;o]-[zeros(m,1);s;k;0]+[zeros(m+n+1,1);mu_0*(n+1)]);
 %Solve for the direction
@@ -113,19 +119,11 @@ for iter = 1:max_iter
 
     %Solve for the direction
     d   = G\rhs;
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
-    d   = G\(-G*d+rhs);
+    %Iterative refiniement
+    for j = 1:13
+       d   = G\(-G*d+rhs);
+    end
+
     dy  = d(1:m);
     dx  = d(m+1:m+n);
     dt  = d(m+n+1);
@@ -193,6 +191,7 @@ for iter = 1:max_iter
         tomu_hist = tomu_hist(1:iter);
         xds_dsx   = xds_dsx(1:iter);
         mu_hist   = mu_hist(1:iter);
+        norms_hist=norms_hist(1:iter);
         break
 
     end
@@ -201,7 +200,7 @@ end
 
 
 plot(phi2_hist)
-title('Phi 2')
+title('Psi \psi')
 figure
 plot(cent_hist)
 title('Centrality')
@@ -217,6 +216,10 @@ title('f')
 figure
 plot(mu_hist)
 title('mu')
+
+figure 
+plot(norms_hist)
+title('||s||_{H^{-1}(x)}')
 %figure
 %plot(logph_hist)
 %title('\rho \log x^Ts + 1/\mu||s+\mu g(x)||')
