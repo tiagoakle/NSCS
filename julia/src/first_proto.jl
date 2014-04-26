@@ -62,6 +62,6 @@ k   = rand(1)
     pm_b  = dx'*s + dt.*k+ds'*x+dk.*t
     root1 = (-pm_b+sqrt(pm_b.^2-4*pm_a))/(2*pm_a)
     root2 = (-pm_b-sqrt(pm_b.^2-4*pm_a))/(2*pm_a)
-
+    println(root2)
 
 
