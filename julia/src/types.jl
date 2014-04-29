@@ -24,24 +24,29 @@ type OpPars
     maxIter::Int
     rho::Float64
     sigma::Float64
+    silent::Bool
 end
 
 #Constructor that sets default parameters
 function OpPars(prob::OpProblem)    
     #10 max iters, rho = nu+sqrt(nu)
-    rho = prob.nu+sqrt(prob.nu)
+    rho = prob.nu+prob.nu*sqrt(prob.nu)
     sigma = prob.nu/rho
-    OpPars(10,rho,sigma)
+    maxIter = 1000
+    OpPars(maxIter,rho,sigma,false)
 end
 
 #Stores the state of the solution
 type OpState
     #Present point
-    x::Array{Float64,1}
     y::Array{Float64,1}
-    s::Array{Float64,1}
+    x::Array{Float64,1}
     t::Float64
+    s::Array{Float64,1}
     k::Float64
+
+    #Present centrality measure
+    mu::Float64
 
     #Residuals
     d::Array{Float64,1} #dual residual
@@ -57,12 +62,12 @@ type OpState
 
 end
 
-#Initialize the state with a given starting vector
+#Allocate the vectors to store the state
 function OpState(prob,
-                 x::Array{Float64,1},
                  y::Array{Float64,1},
-                 s::Array{Float64,1},
+                 x::Array{Float64,1},
                  t::Float64,
+                 s::Array{Float64,1},
                  k::Float64)
 
     #Allocate the residuals
@@ -76,17 +81,17 @@ function OpState(prob,
     ds  = zeros(prob.n)
     dk = 0.0
     #TODO: verify belonging of x,s to the cones
-    OpState(x,y,s,t,k,d,p,g,rhs,dir,wk1,ds,dk)
+    OpState(y,x,t,s,k,0.0,d,p,g,rhs,dir,wk1,ds,dk)
 end
 
 #Initialize the state object from the problem definition
 #Sets the initial x,y,s,t,k to e,0,g(e),t,k
 function OpState(prob::OpProblem)
     #TODO e should come from the cones 
-    x = ones(prob.n)
     y = zeros(prob.m)
-    s = ones(prob.n)
+    x = ones(prob.n)
     t = 1.0
+    s = ones(prob.n)
     k = 1.0
-    OpState(prob,x,y,s,t,k)
+    OpState(prob,y,x,t,s,k)
 end
