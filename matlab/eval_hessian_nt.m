@@ -1,13 +1,13 @@
-function [H] = eval_hessian_nt(problem,xc,s,w,mu)
-    %Evaluates the block hessian 
+function [H] = eval_hessian_nt(problem,xc,s,mu)
+    %Evaluates the sparse block hessian 
     %[1\muH_l 0 ]
     %[0      H_e]
     % where H_l is the hessian at the nt scaling point of the LP cones
-    % and H_e is the hessian of the exponential cone part
+    % and H_e is the hessian of the exponential cones evaluated at xc
 
-    %This is wrong for socp and sdp non zero
-    nnz = problem.n_pos+sum(problem.soc_cones.^2)+sum(problem.sdp_cones.^4)+...
-          problem.n_exp_cones*9+problem.n_power_cones*9;
+    %Number of non zeros
+    nnz = problem.n_pos+...
+          problem.n_exp_cones*9;
 
     pos_indices_1 = [];
     pos_values  = [];
@@ -20,75 +20,9 @@ function [H] = eval_hessian_nt(problem,xc,s,w,mu)
         pos_values   = 1/mu*s(1:problem.n_pos)./(xc(1:problem.n_pos));
     end
     
-    %Build the block diagonal matrix in the sparity inducing form
-    %Each block H(w) is of the form D + uu'. Build instead the matrix
-    % [-1 u']
-    % [ u D ]
-    %which has exactly p+1+2p non zeros rather than p^2.
-
-    %The hessian of the barrier is of the form 
-    %d = 1/(u'Ju)
-    %2d^2Juu'J -dJ
-    %The diagonal is dJ
-    %The outer product u = sqrt(2)d
-
-    %The system 
-    %[-1 u'][g] = [0]
-    %[u  D ][x]   [b] 
-    %Has the same solution x as the original Hx=b
-
-    ie = problem.n_pos+1; %First socp variable
-    ib = problem.n_pos+1; %First diagonal block variable ix
-    il = 1;               %Linear index in the coo representation
-    soc_indicesi = zeros(3*sum(problem.soc_cones))+problem.n_soc_cones;
-    soc_indicesj = zeros(3*sum(problem.soc_cones))+problem.n_soc_cones;
-    soc_vals     = zeros(3*sum(problem.soc_cones))+problem.n_soc_cones;
-    if(problem.n_soc_cones>0)
-       for(k=1:problem.n_soc_cones)
-            %Calculate the determinant uJu
-            d = xc(ie)^2-norm(xc(ie+1:ie+problem.soc_cones(k)-1))^2;
-            d = 1/d;
-            %Append outer product
-            %initial -1
-            soc_vals(il)     = -1;
-            soc_indicesi(il) = ib;
-            soc_indicesj(il) = ib;
-            il = il+1;
-            %Vertical element 
-                %First vertical
-                soc_vals(il)                             =  sqrt(2)*d*w(ie);
-                %Remaining vertical 
-                soc_vals(il+1:il+problem.soc_cones(k)-1) = -sqrt(2)*d*w(ie+1:ie+problem.soc_cones(k)-1);
-                soc_indicesi(il:il+problem.soc_cones(k)-1) = [ib+1:ib+problem.soc_cones(k)]';
-                soc_indicesj(il:il+problem.soc_cones(k)-1) = ib;
-                il = il+problem.soc_cones(k);
-            %Horizontal element
-                %First horizontal
-                soc_vals(il)                             =  sqrt(2)*d*w(ie);
-                %Remaining horizontal
-                soc_vals(il+1:il+problem.soc_cones(k)-1) = -sqrt(2)*d*w(ie+1:ie+problem.soc_cones(k)-1);
-                soc_indicesi(il:il+problem.soc_cones(k)-1) = ib;
-                soc_indicesj(il:il+problem.soc_cones(k)-1) = [ib+1:ib+problem.soc_cones(k)]';
-                il = il+problem.soc_cones(k);  
-            %Diagonal element
-                %First diagonal element
-                soc_vals(il) = -d;
-                soc_indicesi(il) = ib+1;
-                soc_indicesj(il) = ib+1;
-                il = il+1;
-                %p-1 diagonal elements
-                soc_vals(il:il+problem.soc_cones(k)-2)     = -d;
-                soc_indicesi(il:il+problem.soc_cones(k)-2) = [ib+2:ib+problem.soc_cones(k)]';
-                soc_indicesj(il:il+problem.soc_cones(k)-2) = [ib+2:ib+problem.soc_cones(k)]';
-                
-            ie = ie+problem.soc_cones(k);
-            ib = ib+problem.soc_cones(k)+1;
-       end
-    end
-
-    if(problem.n_exp_cones>0)
+     if(problem.n_exp_cones>0)
         %Index of the first exponential variable
-        i_e = problem.n_pos+sum(problem.soc_cones)+problem.n_soc_cones+sum(problem.sdp_cones.^2)+1; 
+        i_e = problem.n_pos+1; 
         %Indices for the columns (and rows) where the entries go
         ix1   = i_e+[0:problem.n_exp_cones-1]';
         ix2   = i_e+problem.n_exp_cones+[0:problem.n_exp_cones-1]';

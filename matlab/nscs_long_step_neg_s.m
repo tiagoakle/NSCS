@@ -1,6 +1,6 @@
-%NSCS Long step matlab minimal version
+%NSCS Long step matlab minimal version with negative s
 
-function [xc,xf,y,s,info] = nscs_long_step(problem,x0f,x0c,pars)
+function [xc,xf,y,s,info] = nscs_long_step_neg_s(problem,x0f,x0c,pars)
     %Problem must contain the fields 
     
     %m
@@ -216,6 +216,8 @@ function [xc,xf,y,s,info] = nscs_long_step(problem,x0f,x0c,pars)
         state.dtau     = d.dtau;
         state.ds       = d.ds;
         state.dkappa   = d.dkappa;
+
+        %Calculate the centrality 
     
         %this resolves the matlab quirk that does not allow adding 
         %[] to an empty matrix
@@ -254,16 +256,15 @@ function [xc,xf,y,s,info] = nscs_long_step(problem,x0f,x0c,pars)
             %Check if the present point is primal dual feasible
             p_feas     = eval_primal_feas(problem,xca);
             if(p_feas)
-                d_feas     = eval_dual_feas(problem,sa);
-                if(d_feas) %If primal and dual feasible
-                    
+                %Check if it keeps mu positive
+                dga = xca'*sa+kappaa*taua;
+                if(dga>0) 
                     %Calculate mu and the duality gap at the affine step point
-                    dga        = xca'*sa+kappaa*taua;
                     mua        = dga/(state.nu+1);
                     break;
                 else
-                    %not dual infeasible 
-                    if(pars.print>3) fprintf('Bk %i Dual infeasible at affine backtrack \n',b_iter); end
+                    %not mu positive
+                    if(pars.print>3) fprintf('Bk %i mu negative at affine backtrack \n',b_iter); end
                 end
             else
                 %not primal infeasible 
@@ -273,7 +274,7 @@ function [xc,xf,y,s,info] = nscs_long_step(problem,x0f,x0c,pars)
         end %End of backtrack loop
         
         %If the maximum number of iterates was reached report an error and exit
-        if(~p_feas || ~d_feas )
+        if(~p_feas || ~(dga>0) )
             fprintf('Backtracking line search failed is backtrack_affine_constant too large?\n');
             state.exit_reason = 'affine backtrack line search fail';
             break;
@@ -353,17 +354,21 @@ function [xc,xf,y,s,info] = nscs_long_step(problem,x0f,x0c,pars)
     
             %Evaluate the trial point
             xca        = state.xc       + state.a_affine*state.dxc;
-            sa         = state.s        + state.a_affine*state.ds;
-    
+            sa         = state.s        + state.a_affine*state.ds; 
+            taua       = state.tau      + state.a_affine*state.dtau;
+            kappaa     = state.kappa    + state.a_affine*state.dkappa;
             %Check if the present point is primal dual feasible
             p_feas     = eval_primal_feas(problem,xca);
             if(p_feas)
-                d_feas     = eval_dual_feas(problem,sa);
-                if(d_feas) %If primal and dual feasible                
-                   break;
+                %Check if it keeps mu positive
+                dga = xca'*sa+kappaa*taua;
+                if(dga>0) 
+                    %Calculate mu and the duality gap at the affine step point
+                    mua        = dga/(state.nu+1);
+                    break;
                 else
-                    %not dual infeasible 
-                    if(pars.print>3) fprintf('Bk %i Dual infeasible at affine backtrack \n',b_iter); end
+                    %not mu positive
+                    if(pars.print>3) fprintf('Bk %i mu negative at affine backtrack \n',b_iter); end
                 end
             else
                 %not primal infeasible 
@@ -373,7 +378,7 @@ function [xc,xf,y,s,info] = nscs_long_step(problem,x0f,x0c,pars)
         end %End of backtrack loop
         
         %If the maximum number of iterates was reached report an error and exit
-        if(~p_feas || ~d_feas )
+        if(~p_feas || ~(dga>0) )
             fprintf('Backtracking line search failed is backtrack_affine_constant too large?\n');
             state.exit_reason = 'affine backtrack line search fail';
             break;
@@ -466,10 +471,10 @@ function [xc,xf,y,s,info] = nscs_long_step(problem,x0f,x0c,pars)
     %Save the info
     info.kkt_solves = state.kkt_solves;
     info.exit_reason = state.exit_reason;
-    xc = state.xc;
-    xf = state.xf;
-    y  = state.y;
-    s  = state.s;
+    xc = state.xc/state.tau;
+    xf = state.xf/state.tau;
+    y  = state.y/state.tau;
+    s  = state.s/state.tau;
 end
 
 function [ret,problem]=validate_problem_structure(problem)

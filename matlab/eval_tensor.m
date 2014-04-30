@@ -7,21 +7,14 @@ function r = eval_tensor(problem,state,pars)
  r = zeros(problem.n_constrained,1);
  temp = zeros(problem.n_constrained,1);
  temp = state.s+state.ds; 
- 
- %Evaluate the tensor of the barrier of the positive orthant in the non 
- %symmetric case
- if(problem.n_pos>0 && ~pars.use_nesterov_todd_scaling)
-    r(1:problem.n_pos) = 2/state.mu*state.xc(1:problem.n_pos).*temp(1:problem.n_pos).^2;
-     %Add the -2muH(x') term
-    r(1:problem.n_pos) = r(1:problem.n_pos) -2*temp(1:problem.n_pos);
- end
   
- %Evaluate the tensor of the barrier of the positive orthant in the
- %symmetric case
- if(problem.n_pos>0 && pars.use_nesterov_todd_scaling)
+ %Evaluate the tensor of the barrier of the positive orthant when the direction 
+ %is using the NT scaling
+ if(problem.n_pos>0)
     r(1:problem.n_pos) = -2*(state.dxc(1:problem.n_pos).*state.ds(1:problem.n_pos)./state.xc(1:problem.n_pos));
  end
-
+ 
+ %Evaluate the tensor of the barrier for the exponential cones
  if(problem.n_exp_cones>0)
     %Calculate the index of the first variable of the exponential cones
     i_e = problem.n_pos + sum(problem.soc_cones) + sum(problem.sdp_cones.^2)+1;

@@ -25,7 +25,6 @@ addpath '../../coneopt/'
 %Quiet the matlab warning about bad scaling
 warning('off','MATLAB:nearlySingularMatrix');
 
-
 if(~exist('pars'))
     set_default_pars
 end
@@ -116,7 +115,6 @@ if(~eval_dual_feas(problem,state.s))
     fprintf('Error, initial dual slack not feasible');
     return;
 end
-
 
 %Calculate the initial centrality
  dga        = state.xc'*state.s+state.kappa*state.tau;

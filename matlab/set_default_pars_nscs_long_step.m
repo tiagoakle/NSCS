@@ -7,7 +7,6 @@ pars = struct;
 
     %XXX: changed from 0.98 for gp testing
     pars.eta        = 0.98;                %Multiple of step to the boundary
-    pars.use_nesterov_todd_scaling = true; %Use centering points for symmetric cones
     pars.stop_primal= 1e-5;                 %Stopping criteria p_res/rel_p_res<stop_primal.
     pars.stop_dual  = 1e-5;
     pars.stop_gap   = 1e-5;
