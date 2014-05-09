@@ -1,6 +1,6 @@
 %NSCS Long step matlab minimal version with negative s
 
-function [xc,xf,y,s,info] = nscs_long_step_neg_s(problem,x0f,x0c,pars)
+function [xc,xf,y,s,t,k,info] = nscs_long_step_neg_s(problem,x0f,x0c,pars)
     %Problem must contain the fields 
     
     %m
@@ -471,10 +471,13 @@ function [xc,xf,y,s,info] = nscs_long_step_neg_s(problem,x0f,x0c,pars)
     %Save the info
     info.kkt_solves = state.kkt_solves;
     info.exit_reason = state.exit_reason;
-    xc = state.xc/state.tau;
-    xf = state.xf/state.tau;
-    y  = state.y/state.tau;
-    s  = state.s/state.tau;
+    xc = state.xc;
+    xf = state.xf;
+    y  = state.y;
+    s  = state.s;
+    t  = state.tau;
+    k  = state.kappa;
+
 end
 
 function [ret,problem]=validate_problem_structure(problem)

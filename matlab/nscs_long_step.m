@@ -1,6 +1,6 @@
 %NSCS Long step matlab minimal version
 
-function [xc,xf,y,s,info] = nscs_long_step(problem,x0f,x0c,pars)
+function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
     %Problem must contain the fields 
     
     %m
@@ -470,6 +470,8 @@ function [xc,xf,y,s,info] = nscs_long_step(problem,x0f,x0c,pars)
     xf = state.xf;
     y  = state.y;
     s  = state.s;
+    t  = state.tau;
+    k  = state.kappa;
 end
 
 function [ret,problem]=validate_problem_structure(problem)
