@@ -22,11 +22,11 @@ nscs_pars = struct;
    nscs_pars.backtrack_affine_constant = 0.9;   %Affine backtracking constant
 
     %XXX: changed from 0.98 for gp testing
-   nscs_pars.eta        = 0.8;                %Multiple of step to the boundary
-   nscs_pars.stop_primal= 1e-7;                 %Stopping criteria p_res/rel_p_res<stop_primal.
-   nscs_pars.stop_dual  = 1e-7;
-   nscs_pars.stop_gap   = 1e-7;
-   nscs_pars.stop_mu    = 1e-12;
+   nscs_pars.eta        = 0.98;                %Multiple of step to the boundary
+   nscs_pars.stop_primal= 1e-12;                 %Stopping criteria p_res/rel_p_res<stop_primal.
+   nscs_pars.stop_dual  = 1e-12;
+   nscs_pars.stop_gap   = 1e-12;
+   nscs_pars.stop_mu    = 1e-11;
    nscs_pars.stop_tau_kappa = 1.e-5;
    nscs_pars.solve_second_order = false;
 

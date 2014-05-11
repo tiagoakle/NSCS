@@ -41,14 +41,14 @@ nscs_pars = struct;
 %Set up the default parameters
    nscs_pars.max_iter   = 100;  %Maximum outer iterations
    nscs_pars.max_affine_backtrack_iter = 300;    %Maximum affine backtracking steps
-   nscs_pars.backtrack_affine_constant = 0.95;   %Affine backtracking constant
+   nscs_pars.backtrack_affine_constant = 0.8;   %Affine backtracking constant
 
     %XXX: changed from 0.98 for gp testing
    nscs_pars.eta        = 0.98;                %Multiple of step to the boundary
-   nscs_pars.stop_primal= 1e-7;                 %Stopping criteria p_res/rel_p_res<stop_primal.
-   nscs_pars.stop_dual  = 1e-7;
-   nscs_pars.stop_gap   = 1e-7;
-   nscs_pars.stop_mu    = 1e-12;
+   nscs_pars.stop_primal= 1e-5;                 %Stopping criteria p_res/rel_p_res<stop_primal.
+   nscs_pars.stop_dual  = 1e-5;
+   nscs_pars.stop_gap   = 1e-5;
+   nscs_pars.stop_mu    = 1e-7;
    nscs_pars.stop_tau_kappa = 1.e-5;
    nscs_pars.solve_second_order = true;
 
@@ -63,8 +63,8 @@ nscs_pars = struct;
 %Cell array for the results
 results = {{'Prob name','KKT coneopt','Coneopt Status','nscs lsnt kkt','nscs lsnt status','msk iter','msk status'}};
 problem_count = size(problem_names,2);
-%for(j =1:problem_count)
-j = 12    
+for(j =1:problem_count)
+%j = 12    
     fprintf('Will solve problem %s \n',problem_names{j});
     problem_file_name = problem_names{j};
     %Add the path to the file
@@ -197,7 +197,7 @@ j = 12
     results = {results{:},problem_result};
  
 
-%end
+end
 
 
 %Print out
