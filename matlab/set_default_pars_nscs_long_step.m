@@ -3,7 +3,7 @@ pars = struct;
 %Set up the default parameters
     pars.max_iter   = 100;  %Maximum outer iterations
     pars.max_affine_backtrack_iter = 300;    %Maximum affine backtracking steps
-    pars.backtrack_affine_constant = 0.9;   %Affine backtracking constant
+    pars.backtrack_affine_constant = 0.95;   %Affine backtracking constant
 
     %XXX: changed from 0.98 for gp testing
     pars.eta        = 0.98;                %Multiple of step to the boundary
@@ -11,7 +11,7 @@ pars = struct;
     pars.stop_dual  = 1e-5;
     pars.stop_gap   = 1e-5;
     pars.stop_mu    = 1e-7;
-    pars.stop_tau_kappa = 1.e-7;
+    pars.stop_tau_kappa = 1.e-5;
     pars.solve_second_order = true;
 
     pars.print      = 1;                     %Level of verbosity from 0 to 11

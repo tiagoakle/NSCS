@@ -445,8 +445,9 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
                     state.exit_reason  = 'Dual Infeasible';
                 elseif(state.ctx > eps && state.bty > eps)
                     state.exit_reason  = 'Primal Infeasible';
+                else
+                    state.exit_reason      = 'Infeasible but undescernible';
                 end
-                state.exit_reason      = 'Infeasible but undescernible';
                 break;
             end     
         end

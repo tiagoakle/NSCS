@@ -17,7 +17,7 @@ function r = eval_tensor(problem,state,pars)
  %Evaluate the tensor of the barrier for the exponential cones
  if(problem.n_exp_cones>0)
     %Calculate the index of the first variable of the exponential cones
-    i_e = problem.n_pos + sum(problem.soc_cones) + sum(problem.sdp_cones.^2)+1;
+    i_e = problem.n_pos + 1;
     %Extract all the x1s
     x = state.xc(i_e:i_e+problem.n_exp_cones-1);
     y = state.xc(i_e+problem.n_exp_cones:i_e+2*problem.n_exp_cones-1);

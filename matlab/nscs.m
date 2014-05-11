@@ -454,7 +454,9 @@ for m_iter = 1:pars.max_iter
         state.dkappa   = d.dkappa;
        
         %If we are debugging and want to see calculate the residuals and print
-        if(pars.print > 2)
+        %if(pars.print > 2)
+        %XXX
+        if(true)
             n_res_1 = norm(problem.A*[state.dxf;state.dxc]-state.dtau*problem.b-r1);
             n_res_2 = norm(-problem.A'*state.dy + state.dtau*problem.c - [zeros(nf,1);state.ds] - r2);
             n_res_3 = norm(problem.b'*state.dy-problem.c'*state.dxc -state.dkappa-r3);
