@@ -1,0 +1,7 @@
+clear all
+%Call all the tests from here
+test_build_feasible_point
+test_set_default_pars
+test_validate_structure
+test_setup_state
+test_backtrack_affine

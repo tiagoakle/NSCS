@@ -37,39 +37,23 @@ parameter_file_path = [current_dir,mosek_parameter_file];
 %NSCS parameters
 
 %Generates the parameters structure for nscs long step with the default parameters
-nscs_pars = struct;
-%Set up the default parameters
-   nscs_pars.max_iter   = 100;  %Maximum outer iterations
-   nscs_pars.max_affine_backtrack_iter = 300;    %Maximum affine backtracking steps
-   nscs_pars.backtrack_affine_constant = 0.8;   %Affine backtracking constant
-
-    %XXX: changed from 0.98 for gp testing
-   nscs_pars.eta        = 0.98;                %Multiple of step to the boundary
+nscs_pars = set_default_pars_nscs_long_step();
+%Set up some parameters
    nscs_pars.stop_primal= 1e-5;                 %Stopping criteria p_res/rel_p_res<stop_primal.
    nscs_pars.stop_dual  = 1e-5;
    nscs_pars.stop_gap   = 1e-5;
    nscs_pars.stop_mu    = 1e-7;
    nscs_pars.stop_tau_kappa = 1.e-5;
-   nscs_pars.solve_second_order = true;
-
-   nscs_pars.print      = 1;                     %Level of verbosity from 0 to 11
-   %Regularization for the linear solver
-   nscs_pars.delta      = 5e-5;
-   nscs_pars.gamma      = 5e-5;
-   nscs_pars.max_iter_ref_rounds = 20;
-
-
-
+  
 %Cell array for the results
 results = {{'Prob name','KKT coneopt','Coneopt Status','nscs lsnt kkt','nscs lsnt status','msk iter','msk status'}};
 problem_count = size(problem_names,2);
 for(j =1:problem_count)
-%j = 12    
     fprintf('Will solve problem %s \n',problem_names{j});
     problem_file_name = problem_names{j};
     %Add the path to the file
     problem_file_name = ['./gp/',problem_file_name];
-    [AA,bb,cc,num_ter,num_var,num_con] = read_gp(problem_file_name);
+    [AA,bb,cc,num_ter,num_var,num_con,mskA,mskConstraints] = read_gp(problem_file_name);
     
     %----------------------------------------------------
     % coneopt call 
@@ -87,7 +71,7 @@ for(j =1:problem_count)
     pars.m = 2*num_ter + num_con+1;
     pars.echo = 4;
 
-%    pars.secord = 1;
+    pars.secord = 1;
     pars.cnbfgsstps = 3;
     pars.theta = 0.7;
     pars.eta   = 0.8;
@@ -148,7 +132,9 @@ for(j =1:problem_count)
     problem.n_exp_cones   = num_ter;
     problem.n_power_cones = 0;
    
-    x0c  = [t00;up0;um0;w00;v00;y00];
+    %x0c  = [t00;up0;um0;w00;v00;y00];
+
+    x0c  = [];
     x0f  = [];
 
 %    %--------------------------------------------------------------------------
@@ -166,7 +152,16 @@ for(j =1:problem_count)
     [xc,xf,y,z,t,k,info] = nscs_long_step(problem,x0f,x0c,nscs_pars);
     nscs_lsnt_kkt = info.kkt_solves; 
     nscs_lsnt_sta = info.exit_reason;
-         
+
+    %Evaluate the solution on the original probem
+    nscs_x = xc/t;
+    nscs_x = nscs_x(2:num_var+1)-nscs_x(num_var+2:2*num_var+1);
+    nscs_ter = mskA*nscs_x;
+    nscs_eu  = exp(nscs_ter-bb(1:num_ter));
+    const_vals = mskConstraints*nscs_eu;
+    nscs_obj    = const_vals(1)
+    nscs_const  = const_vals(2:end)
+
     %-------------------------------------------------------------------------
     % Solve with MOSEK
     %-------------------------------------------------------------------------
@@ -182,13 +177,24 @@ for(j =1:problem_count)
     it_count_ix = it_lines(end);
     mosek_iteration_count = str2num(s(it_count_ix:it_count_ix+2))
     %Extract the status
-    [tokens,t] = regexp(s,'Interior-point solution summary\n  Problem status  : (?<problemstatus>\S*)\n  Solution status : (?<solstat>\S*)','tokens');
+    [tokens] = regexp(s,'Interior-point solution summary\n  Problem status  : (?<problemstatus>\S*)\n  Solution status : (?<solstat>\S*)','tokens');
     %Extract the status of the dual solution
     msk_feas = tokens{1}{1};
     mosek_status = tokens{1}{2};
    
-
- 
+    %Read the solution file back
+    sol_file_path = [problem_path(1:size(problem_path,2)-2),'sol'];
+    [msk_prim_vars, msk_obj]=read_mosek_sol(sol_file_path);
+    
+%    %Check the feasibility of the variables
+%    %Build a vector compatible with the coneopt problem matrix [ob,x,-x,u,v,w]
+%    u = mskA*msk_prim_vars;
+%    eu = exp(u-bb(1:num_ter));    
+%    %Calculate the objective from the variables
+%    const_vals = mskConstraints*eu;
+%    msk_obj    = const_vals(1)
+%    msk_const  = const_vals(2:end)
+%    pause
     %--------------------------------------------------------------------------
     % Save the results 
     %--------------------------------------------------------------------------

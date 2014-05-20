@@ -1,0 +1,6 @@
+Constraint matrix A is not defined
+A must have problem.m rows
+Vector b is not defined
+b must be a mx1 vector 
+Vector c is not defined
+objective must be a nx1 vector 

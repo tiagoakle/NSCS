@@ -1,12 +1,13 @@
-function [AA,bb,cc,num_ter,num_var,num_con] = read_gp(file_name) 
+function [AA,bb,cc,num_ter,num_var,num_con,A,constraints] = read_gp(file_name) 
     %Reads a GP in the format provided by Erling Andersen's .eo files.
     %Sets up the constraints in the form solved by coneopt:
     % 
     % The variables are ob,x_p,x_n,u,v,w.
     % [0,A,-A,-I, ,  ] [ob]    [-log(c_coef)]
-    % [1,0,0 ,0 ,ix_0] [xn]    [0]
-    % [0,0,0 ,0 ,IX  ] [u ]    [1]
-    % [0,0,0 ,0 , I  ] [v ]    [1]
+    % [1,0,0 ,0 ,ix_0] [xp]    [0]
+    % [0,0,0 ,0 ,IX  ] [xn]    [1]
+    % [0,0,0 ,0 , I  ] [u ]    [1]
+    %                  [v ]
     %                  [w ]
     %
     % num_ter: is the total number of monomial terms in the cosnstraints and objective.

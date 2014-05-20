@@ -1,156 +1,68 @@
 %NSCS Long step matlab minimal version
 
 function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
-    %Problem must contain the fields 
+%Problem must contain the fields  
+%   m
+%   n_free
+%   n_pos
+%   n_soc_cones
+%   soc_cones[]
+%   n_sdp_cones
+%   sdp_cones[]
+%   n_exp_cones 
+%   Starting point
+%   x0f, x0c 
+%   Problem definition in problem strucutre
+%    A
+%    b
+%    c
     
-    %m
-    %n_free
-    %n_pos
-    %n_soc_cones
-    %soc_cones[]
-    %n_sdp_cones
-    %sdp_cones[]
-    %n_exp_cones
-    
-    %Starting point
-    %x0f, x0c;
-    
-    %Problem definition in problem strucutre
-    % A
-    % b
-    % c
-    
-    %The pars structure must contain
-    %Set up the default parameters
-    %pars.max_iter   = 100;  %Maximum outer iterations
-    %pars.max_affine_backtrack_iter = 300;    %Maximum affine backtracking steps
-    %pars.backtrack_affine_constant = 0.9;   %Affine backtracking constant
-
-    %%XXX: changed from 0.98 for gp testing
-    %pars.eta        = 0.98;                %Multiple of step to the boundary
-    %pars.stop_primal= 1e-5;                 %Stopping criteria p_res/rel_p_res<stop_primal.
-    %pars.stop_dual  = 1e-5;
-    %pars.stop_gap   = 1e-5;
-    %pars.stop_mu    = 1e-7;
-    %pars.stop_tau_kappa = 1.e-7;
-    %pars.solve_second_order = true;
-
-    %pars.print      = 1;                     %Level of verbosity from 0 to 11
-    %%Regularization for the linear solver
-    %pars.delta      = 5e-10;
-    %pars.gamma      = 5e-10;
-    %pars.max_iter_ref_rounds = 20;
-
-
     %Quiet the matlab warning about bad scaling
     warning('off','MATLAB:nearlySingularMatrix');
-    
-    %If pars is not defined get the default 
-    if ~exist('pars') 
-        set_default_pars_nscs_long_step
-    end
+
+    %-------------------------------------------------
+    % Validate the problem definition
+    %-------------------------------------------------
     
     [ret,problem]=validate_problem_structure(problem);
     if(ret~=0)
         return;
+    end 
+   
+    %If pars is not defined get the default 
+    if ~exist('pars') 
+        pars = set_default_pars_nscs_long_step()
     end
+  
+    %If the initial point is not set set it
+    if(isempty(x0c))
+        x0c = build_feasible_primal_point(problem);
+    end
+      
     
-    %------------------------------------------------
-    % Validate problem input and initialize the state
-    %------------------------------------------------
+    %--------------------------------------------------
+    % 'state' holds the present iterates and directions
+    %--------------------------------------------------
     
+    %State will be a global variable so that we dont
+    %make copies
     state = struct;
     state.xc = x0c;
-    state.xf = x0f;
-       
-    %Verify that the inital d is feasible
-    if(~eval_primal_feas(problem,state.xc))
-        fprintf('Error, initial primal slack not feasible');
-        return;
-    end
-        
+    state.xf = x0f; 
     
     %-----------------------------------------------
     %Initialize the variables that are a function of 
     % the initial point and parameters
-    %-----------------------------------------------
-    
-    %Calculate the denominators for the stopping criteria
-    state.rel_p_res = max(norm([problem.A,problem.b],'inf'),1);
-    state.rel_d_res = max(norm(...
-        [problem.A',[sparse(problem.n_free,problem.n_constrained);speye(problem.n_constrained)],problem.c],'inf'),1);
-    state.rel_g_res = norm([problem.c;problem.b;1],'inf');
-    
-    %Calculate the complexity parameter
-    state.nu = problem.n_pos; %Each soc cone is complexity one
-    state.nu = state.nu + problem.n_exp_cones*3;
-    
-    %Allocate the space for the working vectors
-    state.temp1 = zeros(problem.n_constrained,1);
-    state.temp2 = zeros(problem.n_constrained,1);
-    
-    %Calculate the starting point
-    state.y  = ones(problem.m,1);
-    state.s  = ones(problem.n_constrained,1);
-    state.xf = x0f;
-    state.xc = x0c;
-    state.tau = 1;
-    state.kappa = 1;
-    
-    %Calculate a feasible centered dual slack
-    state.temp1  = eval_grad(problem,state.xc);
-    state.s      = -(state.tau*state.kappa)/(state.nu+1)*state.temp1;
-    state.temp1  = 1/(state.nu+1)*state.temp1;
-    qtx          = state.s'*state.xc;
-    vtx          = state.temp1'*state.xc;
-    state.s      = state.s-(qtx/(vtx+1))*state.temp1; 
-    %Sanity check verify that the dual slack is feasible
-    if(~eval_dual_feas(problem,state.s))
-        fprintf('Error, initial dual slack not feasible');
-        return;
-    end 
-    %Calculate the initial centrality and save in state.mu0
-     dga        = state.xc'*state.s+state.kappa*state.tau;
-     mua        = dga/(state.nu+1);
-     state.mu0  = mua;
-     state.mu   = mua;
-       
-    %initialize some counters
-    state.c_iter = 0;
-    state.m_iter = 0;
-    state.b_iter = 0;
-    state.c_backtrack_iter = 0;
-    state.kkt_solves = 0;
-    state.centering_iterations = 0;
-    
-    %Shorthand symbols
-    n           = problem.n;
-    nc          = problem.n_constrained;
-    nf          = problem.n_free;
-    m           = problem.m;
-    
-    %Allocate space for the residuals and calculate them
-    state.p_res         =  problem.b*state.tau-problem.A*[state.xf;state.xc];
-    state.d_res         = -problem.c*state.tau+problem.A'*state.y;
-    state.d_res(nf+1:n) = state.d_res(nf+1:n) + state.s;
-    if(~isempty(state.xf)) %If state.xf is empty then the c'x would result in an empty matrix
-        cfxf = problem.c(1:nf)'*state.xf;
-    else
-        cfxf = 0;
-    end  
-    state.g_res         = - problem.b'*state.y  +cfxf+problem.c(nf+1:n)'*state.xc + state.kappa; 
-    
-    %Calculate the relative gap
-    state.ctx           = problem.c(problem.n_free+1:problem.n)'*state.xc;
-    state.bty           = problem.b'*state.y;
-    state.relative_gap  = abs( state.ctx - state.bty )/( state.tau + abs(state.bty) );
-     
-    %Calculate the residual norms
-    state.n_p_res       = norm(state.p_res,'inf')/state.rel_p_res;
-    state.n_d_res       = norm(state.d_res,'inf')/state.rel_d_res;
-    state.n_g_res       = abs(state.g_res)/state.rel_g_res;;
-   
+    %----------------------------------------------- 
+    [state,problem] = setup_state(state,problem,x0f,x0c);
 
+    %Verify that the inital primal is feasible
+    if(~eval_primal_feas(problem,state.xc))
+        fprintf('Error, initial primal slack not feasible');
+        return;
+    end
+
+       
     %----------------------------------------------
     % Print the header
     %-----------------------------------------------
@@ -168,7 +80,6 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
         fprintf('==========================================================================\n');
     end
     
-
     %Print the iteration log
     if(pars.print > 0)
         fprintf('%2i  %3.3e   %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e  %3.3e   %3.3e\n',...
@@ -178,11 +89,16 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
                          state.n_p_res,state.n_d_res,state.relative_gap,state.n_g_res);
     end
     
-    
     %-----------------------------------------------
     %Start of the major iteration
     %-----------------------------------------------
     
+    %Shorthand symbols
+    n           = problem.n;
+    nc          = problem.n_constrained;
+    nf          = problem.n_free;
+    m           = problem.m;
+
     %Iteration counter
     m_iter = 0;
     %Message of exit reason
@@ -239,48 +155,12 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
         state.a_affine  = 1.0;
         %Find the largest step to the boundary of the symmetric cones
         state.a_affine = max_step_symmetric_cones(problem,state);
-         
-        % Backtrack loop
-        b_iter = 0;
-        for b_iter = 1:pars.max_affine_backtrack_iter
-            state.b_iter = b_iter;
-    
-            %Evaluate the trial point
-            xca        = state.xc       + state.a_affine*state.dxc;
-            taua       = state.tau      + state.a_affine*state.dtau;
-            sa         = state.s        + state.a_affine*state.ds;
-            kappaa     = state.kappa    + state.a_affine*state.dkappa;
-    
-            %Check if the present point is primal dual feasible
-            p_feas     = eval_primal_feas(problem,xca);
-            if(p_feas)
-                d_feas     = eval_dual_feas(problem,sa);
-                if(d_feas) %If primal and dual feasible
-                    
-                    %Calculate mu and the duality gap at the affine step point
-                    dga        = xca'*sa+kappaa*taua;
-                    mua        = dga/(state.nu+1);
-                    break;
-                else
-                    %not dual infeasible 
-                    if(pars.print>3) fprintf('Bk %i Dual infeasible at affine backtrack \n',b_iter); end
-                end
-            else
-                %not primal infeasible 
-                    if(pars.print>3) fprintf('Bk %i Primal infeasible at affine backtrack \n',b_iter); end
-            end 
-            state.a_affine  = state.a_affine*pars.backtrack_affine_constant;
-        end %End of backtrack loop
         
-        %If the maximum number of iterates was reached report an error and exit
-        if(~p_feas || ~d_feas )
-            fprintf('Backtracking line search failed is backtrack_affine_constant too large?\n');
-            state.exit_reason = 'affine backtrack line search fail';
+        state = backtrack_affine(state,pars,problem);
+        if(state.failed)
             break;
         end
-        
-        clear 'xac' 'taua' 'sa' 'kappaa'
-        
+
         %----------------------------------------------
         %Solve the mixed centering correcting direction
         %----------------------------------------------
@@ -354,13 +234,22 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
             %Evaluate the trial point
             xca        = state.xc       + state.a_affine*state.dxc;
             sa         = state.s        + state.a_affine*state.ds;
-    
+            taua       = state.tau      + state.a_affine*state.dtau;
+            kappaa     = state.kappa    + state.a_affine*state.dkappa;
+
+            dga        = xca'*sa+kappaa*taua;
+            mua        = dga/(state.nu+1);
+
             %Check if the present point is primal dual feasible
             p_feas     = eval_primal_feas(problem,xca);
             if(p_feas)
                 d_feas     = eval_dual_feas(problem,sa);
                 if(d_feas) %If primal and dual feasible                
-                   break;
+                    if(eval_small_neigh(problem,xca,sa,mua)<pars.neigh)
+                        break;
+                    else
+                        if(pars.print>3) fprintf('Bk %i Neighborhood volation \n',b_iter); end
+                    end
                 else
                     %not dual infeasible 
                     if(pars.print>3) fprintf('Bk %i Dual infeasible at affine backtrack \n',b_iter); end
@@ -394,6 +283,9 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
         %Calculate mu and the duality gap at the new point
         dga              = state.xc'*state.s+state.kappa*state.tau;
         state.mu        = dga/(state.nu+1);
+
+        %Calculate the present value of the centrality
+        %eval_small_neigh(problem,state.xc,state.s,state.mu);
      
         %------------------------------------------------------------
         %Calculate the residuals
@@ -475,19 +367,3 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
     k  = state.kappa;
 end
 
-function [ret,problem]=validate_problem_structure(problem)
-    ret = 0;
-    %Make sure the number of constrained and free variables adds to n;
-    tot_constraints = problem.n_free+problem.n_pos+...
-                      problem.n_exp_cones*3;
-    
-    if(tot_constraints ~= problem.n)
-        fprintf('Error, sum of all constraints must equal n\n');
-        ret = -8;
-        return;
-    end
-    
-    %Populate these values
-    problem.n_constrained = problem.n-problem.n_free;
-  
-end

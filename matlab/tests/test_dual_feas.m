@@ -29,6 +29,4 @@ if(~eval_primal_feas(problem,x)) error('Test primal feas exp failed'); end
 x   = [-y00,v00/exp(1),-w00];
 if(~eval_dual_feas(problem,x)) error('Test dual feas exp failed'); end
 
-
-
 disp('No errors');
