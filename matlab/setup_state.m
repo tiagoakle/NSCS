@@ -16,6 +16,8 @@ function [state,problem] = setup_state(state,problem,x0f,x0c)
     %calculate the complexity parameter
     state.nu = problem.n_pos; %each soc cone is complexity one
     state.nu = state.nu + problem.n_exp_cones*3; %each of these of complexity 3
+
+    state.sigma = NaN;
      
     %allocate the starting point
     state.y  = ones(problem.m,1);

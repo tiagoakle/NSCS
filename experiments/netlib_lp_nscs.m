@@ -6,7 +6,7 @@
   load 'standard_form_indices.mat' 
 
   %Choose a problem from the list
-  problem_index = 10;
+  problem_index = 1;
   %Extract the problem 
   problem_uf_ix = st_ix(problem_index);
   %Get the problem from ufget
@@ -39,8 +39,10 @@
  
   fprintf('Loaded problem %s, m:%i, n:%i\n',P.name,problem.m,problem.n);
   pars = set_default_pars_nscs_long_step(); 
-  pars.second_order = false;
-  pars.neigh = Inf;
+  pars.second_order = true;
+  pars.neigh = 0.5;
+  
+  pars.stop_gap = 1.e-12; 
   x0f        = [];
   [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars);
 

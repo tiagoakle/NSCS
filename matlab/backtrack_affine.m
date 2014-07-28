@@ -28,7 +28,7 @@ function [state] = backtrack_affine(state,pars,problem)
                 if(cent <pars.neigh)
                     break;
                 else
-                    if(pars.print>3) fprintf('Bk %i Neighborhood volation \n',b_iter); end
+                    if(pars.print>3) fprintf('Bk %i Neighborhood volation at affine\n',b_iter); end
                 end
             else
                 %not dual infeasible 

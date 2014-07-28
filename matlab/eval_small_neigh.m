@@ -44,8 +44,8 @@ function norm = eval_small_neigh(problem,xc,s,mu)
          [ -(l - 1)*rinv , -1*rinvsqr*rzinvsqr     , (r + 2*x3)^(1/2)*zinv*rzinvsqr   ]];
 
         %Calculate (s+mu g)H^-1(s+mu g)       
-        v     = linsolve(C',sc+mu*g);
-        v     = linsolve(C,v);
+        v     = linsolve(C,sc+mu*g);
+        v     = linsolve(C',v);
         norm  = norm + ((sc+mu*g)'*v);
         i_e   = i_e+1;
 

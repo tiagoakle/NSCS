@@ -1,4 +1,4 @@
-function [x,f] = minentropy_nscs(A,b,d,varargin)
+function [x] = minentropy_nscs(A,b,d,varargin)
 
 % min_x   sum_j  d_j x_j log(x_j) 
 % s.t.     Ax = b
@@ -56,10 +56,16 @@ x0c = [u0;v00;x0];
 x0f = [];
 pars = set_default_pars_nscs_long_step(); 
 pars.second_order = false;
-pars.neigh = 0.8;
+pars.neigh = 1.0;
 
-if(~isfield(pars,'stop_gap')) pars.stop_gap = 1.e-6; end
+pars.stop_primal= 1e-6;                 %stopping criteria p_res/rel_p_res<stop_primal.
+pars.stop_dual  = 1e-6;
+pars.stop_gap   = 1e-6;
+pars.stop_mu    = 1e-8;
+pars.stop_tau_kappa = 1.e-5;
+pars
 
+ 
 [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars);
 x = xc;
 
