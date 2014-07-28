@@ -44,7 +44,8 @@ function r = eval_tensor(problem,state,pars)
      
      r(i_e:i_e+3*problem.n_exp_cones-1) = -1/state.mu*[r1;r2;r3];
      %Add the -2muH(x') term
-     r(i_e:i_e+3*problem.n_exp_cones-1) = r(i_e:i_e+3*problem.n_exp_cones-1)-2*temp(i_e:i_e+3*problem.n_exp_cones-1); 
+     r(i_e:i_e+3*problem.n_exp_cones-1) = r(i_e:i_e+3*problem.n_exp_cones-1)-2*temp(i_e:i_e+3*problem.n_exp_cones-1);  
+
  end
 
 end

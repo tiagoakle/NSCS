@@ -1,3 +1,4 @@
+  %Solves the lp in standard form using nscs
   clear all
   addpath '../'
   %Load the file that contains the indices for the
@@ -5,7 +6,7 @@
   load 'standard_form_indices.mat' 
 
   %Choose a problem from the list
-  problem_index = 4;
+  problem_index = 10;
   %Extract the problem 
   problem_uf_ix = st_ix(problem_index);
   %Get the problem from ufget
@@ -35,6 +36,12 @@
   problem.n_power_cones = 0;
   x0c        = ones(problem.n,1);
   x0f        = []; 
+ 
   fprintf('Loaded problem %s, m:%i, n:%i\n',P.name,problem.m,problem.n);
-  nscs 
+  pars = set_default_pars_nscs_long_step(); 
+  pars.second_order = false;
+  pars.neigh = Inf;
+  x0f        = [];
+  [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars);
+
 

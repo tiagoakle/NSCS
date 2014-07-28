@@ -3,6 +3,8 @@ function [state] = backtrack_affine(state,pars,problem)
     b_iter = 0;
     p_feas = false;
     d_feas = false;
+    
+    state.failed = false;
 
     for b_iter = 1:pars.max_affine_backtrack_iter
         state.b_iter = b_iter;

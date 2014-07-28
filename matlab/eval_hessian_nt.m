@@ -44,7 +44,6 @@ function [H] = eval_hessian_nt(problem,xc,s,mu)
         psi2  = psi.*psi;
         psim2 = psim1.*psim1;
         x2m2  = x2m1.*x2m1;
-        x3m1  = 1./x3;
         x3m2  = x3m1.*x3m1;
 
         el11  = psim2;

@@ -183,7 +183,7 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
             %Add the correction to the exponential cone part 
             i_e = problem.n_pos + 1;
             r5(i_e:i_e+3*problem.n_exp_cones-1) = r5(i_e:i_e+3*problem.n_exp_cones-1) + ...
-                (1-sigma)^3*0.5*correction_term(i_e:i_e+3*problem.n_exp_cones-1);
+                (1-sigma)*0.5*correction_term(i_e:i_e+3*problem.n_exp_cones-1);
             %Add the correction for the symmetric part
             r5(1:problem.n_pos) = r5(1:problem.n_pos) + 0.5*(1-sigma)*correction_term(1:problem.n_pos);
         end
@@ -267,7 +267,7 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
             state.exit_reason = 'affine backtrack line search fail';
             break;
         end
-        
+
         %Take a multiple of the feasible step length just to be sure the 
         %next iterate is not too close from the boundary
         state.a_affine = state.a_affine*pars.eta;

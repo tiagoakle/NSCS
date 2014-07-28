@@ -1,3 +1,5 @@
+%CALL NSCS minentropy script
+addpath ../matlab
 % ENTROPY PROBLEM
 
 clear; clc;
@@ -16,5 +18,5 @@ pars.trace  = 3;
 pars.secord = 1;
  
  
-[x,f] = minentropy(A,b,d,pars);
+[x,f,R] = minentropy_nscs(A,b,d,pars);
  
