@@ -1,4 +1,10 @@
-function [state] = backtrack_affine(state,pars,problem)
+function [state] = backtrack_affine(state,pars,problem,affine)
+    if(affine)
+        str_type = 'affine';
+    else
+        str_type = 'combined';
+    end
+
     % Backtrack loop
     b_iter = 0;
     p_feas = false;
@@ -24,19 +30,19 @@ function [state] = backtrack_affine(state,pars,problem)
         if(p_feas)
             d_feas     = eval_dual_feas(problem,sa);
             if(d_feas) %If primal and dual feasible
-                cent = eval_small_neigh(problem,xca,sa,mua);
-                if(cent <pars.neigh)
+                cent = eval_small_neigh(problem,xca,sa,taua,kappaa,mua);
+                if(cent < pars.neigh)
                     break;
                 else
-                    if(pars.print>3) fprintf('Bk %i Neighborhood volation at affine\n',b_iter); end
+                    if(pars.print>3) fprintf('Bk %i Neighborhood volation at %s %e \n',b_iter,str_type,cent); end
                 end
             else
                 %not dual infeasible 
-                if(pars.print>3) fprintf('Bk %i Dual infeasible at affine backtrack \n',b_iter); end
+                if(pars.print>3) fprintf('Bk %i Dual infeasible at %s backtrack \n',b_iter,str_type); end
             end
         else
             %not primal infeasible 
-                if(pars.print>3) fprintf('Bk %i Primal infeasible at affine backtrack \n',b_iter); end
+                if(pars.print>3) fprintf('Bk %i Primal infeasible at %s \n',b_iter,str_type); end
         end 
         state.a_affine  = state.a_affine*pars.backtrack_affine_constant;
     end %End of backtrack loop
@@ -46,7 +52,7 @@ function [state] = backtrack_affine(state,pars,problem)
         if(pars.print>0)
             fprintf('Backtracking line search failed is backtrack_affine_constant too large?\n');
         end
-        state.exit_reason = 'affine backtrack line search fail';
+        state.exit_reason = [str_type ' backtrack line search fail'];
         state.fail      = true;
         return;
     end

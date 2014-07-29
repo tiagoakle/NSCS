@@ -4,15 +4,13 @@
 %Here mu is the complementarity of the exponential cones, g the gradient 
 %of the exponential cones and s the duals of the exponential cones
 
-function norm = eval_small_neigh(problem,xc,s,mu)
+function norm = eval_small_neigh(problem,xc,s,tau,kappa,mu)
     norm = 0; %Accumulator
     sc    = zeros(3,1);
 
     %Calculate mu
     i_e = problem.n_pos+1;
     %stranspose x fr the conical
-    stx  = xc(i_e:i_e+3*problem.n_exp_cones-1)'*s(i_e:i_e+3*problem.n_exp_cones-1);
-
     for j=1:problem.n_exp_cones
         %Extract the entries of x for the cone
         x1    = xc(i_e);
@@ -44,9 +42,9 @@ function norm = eval_small_neigh(problem,xc,s,mu)
          [ -(l - 1)*rinv , -1*rinvsqr*rzinvsqr     , (r + 2*x3)^(1/2)*zinv*rzinvsqr   ]];
 
         %Calculate (s+mu g)H^-1(s+mu g)       
-        v     = linsolve(C,sc+mu*g);
+        v     = linsolve(C,sc/mu+g);
         v     = linsolve(C',v);
-        norm  = norm + ((sc+mu*g)'*v);
+        norm  = norm + ((sc/mu+g)'*v);
         i_e   = i_e+1;
 
         %%Sanity checks

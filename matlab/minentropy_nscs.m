@@ -5,6 +5,13 @@ function [x,f] = minentropy_nscs(A,b,d,varargin)
 %           x >= 0
 %
 
+if nargin > 3
+    pars = varargin{1};
+else
+    pars = set_default_pars_nscs_long_step();
+end
+
+
 [M,N]   = size(A);
 b       = b(:);
 M2      = length(b);
@@ -54,7 +61,7 @@ x0  = 0.5*ones(N,1);
 
 x0c = [u0;v00;x0];
 x0f = [];
-pars = set_default_pars_nscs_long_step(); 
+
 pars.second_order = false;
 pars.neigh = 0.8;
 

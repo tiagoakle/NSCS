@@ -8,7 +8,7 @@ l = sym('l','real');
 
 %Define the functionn
 f = -log(z*log(y/z)-x)-log(y)-log(z)
-H = hessian(f);
+H = hessian(f,[x;y;z]);
 
 %Incorporate the assumptions of positivity
 Hs = subs(H,l,log(y/z));

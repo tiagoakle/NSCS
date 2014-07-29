@@ -156,7 +156,7 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
         %Find the largest step to the boundary of the symmetric cones
         state.a_affine = max_step_symmetric_cones(problem,state);
         
-        state = backtrack_affine(state,pars,problem);
+        state = backtrack_affine(state,pars,problem,true);
         if(state.failed)
             break;
         end
@@ -188,7 +188,7 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
             r5(1:problem.n_pos) = r5(1:problem.n_pos) + 0.5*(1-sigma)*correction_term(1:problem.n_pos);
         end
      
-        %Call the solver and e-use the factorization
+        %Call the solver and re-use the factorization
         d              = solve_linear_system(H,state.mu,state.kappa,state.tau,problem,pars,r1,r2,r3,r4,r5,factorization);
         state.dy       = d.dy;
         state.dxf      = d.dxf;
@@ -225,48 +225,55 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
         if(state.dkappa<0)
             state.a_affine = min(state.a_affine,-state.kappa/state.dkappa);
         end
-         
-        % Backtrack loop
-        b_iter = 0;
-        for b_iter = 1:pars.max_affine_backtrack_iter
-            state.b_iter = b_iter;
-    
-            %Evaluate the trial point
-            xca        = state.xc       + state.a_affine*state.dxc;
-            sa         = state.s        + state.a_affine*state.ds;
-            taua       = state.tau      + state.a_affine*state.dtau;
-            kappaa     = state.kappa    + state.a_affine*state.dkappa;
-
-            dga        = xca'*sa+kappaa*taua;
-            mua        = dga/(state.nu+1);
-
-            %Check if the present point is primal dual feasible
-            p_feas     = eval_primal_feas(problem,xca);
-            if(p_feas)
-                d_feas     = eval_dual_feas(problem,sa);
-                if(d_feas) %If primal and dual feasible                
-                    if(eval_small_neigh(problem,xca,sa,mua)<pars.neigh)
-                        break;
-                    else
-                        if(pars.print>3) fprintf('Bk %i Neighborhood volation \n',b_iter); end
-                    end
-                else
-                    %not dual infeasible 
-                    if(pars.print>3) fprintf('Bk %i Dual infeasible at affine backtrack \n',b_iter); end
-                end
-            else
-                %not primal infeasible 
-                    if(pars.print>3) fprintf('Bk %i Primal infeasible at affine backtrack \n',b_iter); end
-            end 
-            state.a_affine  = state.a_affine*pars.backtrack_affine_constant;
-        end %End of backtrack loop
         
-        %If the maximum number of iterates was reached report an error and exit
-        if(~p_feas || ~d_feas )
-            fprintf('Backtracking line search failed is backtrack_affine_constant too large?\n');
-            state.exit_reason = 'affine backtrack line search fail';
+        state = backtrack_affine(state,pars,problem,false);
+        if(state.failed)
             break;
         end
+
+
+       % % Backtrack loop
+       % b_iter = 0;
+       % for b_iter = 1:pars.max_affine_backtrack_iter
+       %     state.b_iter = b_iter;
+    
+       %     %Evaluate the trial point
+       %     xca        = state.xc       + state.a_affine*state.dxc;
+       %     sa         = state.s        + state.a_affine*state.ds;
+       %     taua       = state.tau      + state.a_affine*state.dtau;
+       %     kappaa     = state.kappa    + state.a_affine*state.dkappa;
+
+       %     dga        = xca'*sa+kappaa*taua;
+       %     mua        = dga/(state.nu+1);
+
+       %     %Check if the present point is primal dual feasible
+       %     p_feas     = eval_primal_feas(problem,xca);
+       %     if(p_feas)
+       %         d_feas     = eval_dual_feas(problem,sa);
+       %         if(d_feas) %If primal and dual feasible                
+       %             neigh = eval_small_neigh(problem,xca,sa,taua,kappaa,mua);
+       %             if(neigh<pars.neigh)
+       %                 break;
+       %             else
+       %                 if(pars.print>3) fprintf('Bk %i Neighborhood volation combined %e \n',b_iter,neigh); end
+       %             end
+       %         else
+       %             %not dual infeasible 
+       %             if(pars.print>3) fprintf('Bk %i Dual infeasible at combined backtrack \n',b_iter); end
+       %         end
+       %     else
+       %         %not primal infeasible 
+       %             if(pars.print>3) fprintf('Bk %i Primal infeasible at combined backtrack \n',b_iter); end
+       %     end 
+       %     state.a_affine  = state.a_affine*pars.backtrack_affine_constant;
+       % end %End of backtrack loop
+       % 
+       % %If the maximum number of iterates was reached report an error and exit
+       % if(~p_feas || ~d_feas )
+       %     fprintf('Backtracking line search failed is backtrack_affine_constant too large?\n');
+       %     state.exit_reason = 'affine backtrack line search fail';
+       %     break;
+       % end
 
         %Take a multiple of the feasible step length just to be sure the 
         %next iterate is not too close from the boundary
