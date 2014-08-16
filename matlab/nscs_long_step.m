@@ -176,16 +176,16 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
         r2             = (1-sigma)*state.d_res;
         r3             = (1-sigma)*state.g_res; 
         %Legacy from coneopt these are backwards
-        r4             = sigma*state.mu - state.tau*state.kappa - (1-sigma)*state.dtau*state.dkappa;
+        r4             = sigma*state.mu - state.tau*state.kappa - (1-sigma)^2*state.dtau*state.dkappa;
         r5             = -state.s-sigma*state.mu*state.g;
         
         if(pars.solve_second_order)
             %Add the correction to the exponential cone part 
             i_e = problem.n_pos + 1;
             r5(i_e:i_e+3*problem.n_exp_cones-1) = r5(i_e:i_e+3*problem.n_exp_cones-1) + ...
-                (1-sigma)*0.5*correction_term(i_e:i_e+3*problem.n_exp_cones-1);
+                (1-sigma)^2*0.5*correction_term(i_e:i_e+3*problem.n_exp_cones-1);
             %Add the correction for the symmetric part
-            r5(1:problem.n_pos) = r5(1:problem.n_pos) + 0.5*(1-sigma)*correction_term(1:problem.n_pos);
+            r5(1:problem.n_pos) = r5(1:problem.n_pos) + 0.5*(1-sigma)^2*correction_term(1:problem.n_pos);
         end
      
         %Call the solver and re-use the factorization
@@ -339,7 +339,7 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
             if(state.relative_gap<pars.stop_gap)
                 state.exit_reason = 'Optimal';
                 break;
-            elseif(state.n_g_res < pars.stop_gap && state.tau<pars.stop_tau_kappa*max(1,state.kappa))
+            elseif(state.n_g_res < pars.stop_gap_res && state.tau<pars.stop_tau_kappa*max(1,state.kappa))
                 %In this case it is infeasible, try to detect if it is primal or dual infeasible
                 if(state.ctx < -eps && state.bty < -eps)
                     state.exit_reason  = 'Dual Infeasible';
@@ -351,7 +351,7 @@ function [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars)
                 break;
             end     
         end
-       if(state.mu < state.mu0*pars.stop_mu&&state.tau<1.e-2*min(1,state.kappa))
+       if(state.mu < state.mu0*pars.stop_mu&&state.tau<1.e-6*min(1,state.kappa))
             state.exit_reason = 'Ill Posed';
             break;
        end

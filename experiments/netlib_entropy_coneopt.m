@@ -8,7 +8,7 @@
   load 'standard_form_indices.mat' 
 
   %Choose a problem from the list
-  problem_index = 5;
+  problem_index = 4;
   %Extract the problem 
   problem_uf_ix = st_ix(problem_index);
   %Get the problem from ufget
@@ -29,8 +29,8 @@
    pars.n = problem.n;
    pars.m = problem.m;
    pars.echo = 4;
-   pars.secord = 0;
-   pars.centmeastype = 5;
+   pars.secord = 1;
+   %pars.centmeastype = 5;
  
   [xc] = minentropy(P.A,P.b,ones(size(P.A,2),1),pars);
 

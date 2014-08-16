@@ -18,7 +18,7 @@ clear all
 
 
   %Choose a problem from the list
-  for problem_index = 1:5
+  for problem_index = 4
     %Extract the problem 
     problem_uf_ix = st_ix(problem_index);
     %Get the problem from ufget
@@ -48,25 +48,64 @@ clear all
 
     c  = [-ones(n,1);zeros(n,1);zeros(n,1)];
     bb = [ones(n,1);P.b];
+
+    [M,N]   = size(P.A);
+    b       = P.b(:);
+    M2      = length(P.b);
+    
+    if M ~= M2
+        error('A and b do not match');
+    end
+    
+    pars.n = 3*N;
+    pars.m = N+M;
+    
+    % build cone:
+    K.npos = 0;
+    K.npow = 0;
+    K.nexp = N;
+    K.nlog = 0;
+    K      = getbarrpar(K);
+    
+    % build A:
+    nnzA    = nnz(P.A);
+    AA      = sparse([],[],[],pars.m,pars.n,nnzA+N);
+    tmp     = N*(N+M);
+    tmp     = tmp + 1:(N+M+1):(2*N*(N+M)-M);
+    AA(tmp) = 1;
+    tmp     = N+1:pars.m;
+    tmp2    = 2*N+1:pars.n;
+    AA(tmp,tmp2) = P.A;
+    
+    % build b:
+    bb             = ones(pars.m,1);
+    bb(N+1:pars.m) = b;
+    bb             = sparse(bb);
+    
+    % build c:
+    cc      = zeros(pars.n,1);
+    cc(1:N) = -ones(N,1);
+    cc      = sparse(cc);
  
   %Problem parameters
   
   fprintf('Loaded problem %s, m:%i, n:%i\n',P.name,m,n);
  
-   %-----------------------------
-   % Call coneopt 
-   %-----------------------------
-   K = struct;
-   % build cone:
-   K.npos = 0;
-   K.npow = 0;
-   K.nexp = n;
-   K.nlog = 0;
-   K      = getbarrpar(K);
-   %parameters 
-   pars   = struct;
-   pars.n = size(AA,2);
-   pars.m = size(AA,1);
+ %  %-----------------------------
+ %  % Call coneopt 
+ %  %-----------------------------
+ %  K = struct;
+ %  % build cone:
+ %  K.npos = 0;
+ %  K.npow = 0;
+ %  K.nexp = n;
+ %  K.nlog = 0;
+ %  K      = getbarrpar(K);
+ %  
+ %  %parameters 
+ %  pars   = struct;
+ %  pars.n = size(AA,2);
+ %  pars.m = size(AA,1);
    pars.echo = 4;
    pars.secord = 0;
    pars.centmeastype = 5;
@@ -75,24 +114,38 @@ clear all
               1.258967884768947;
               0.556409619469370];
 
-    %Make the initial points
-    x0c = [pfeas(1)*ones(n,1);pfeas(2)*ones(n,1);pfeas(3)*ones(n,1)];
+     
+    % starting point:
+    u0  = -ones(n,1);
+    v00 = ones(n,1);  
+    x0  = 0.5*ones(n,1);
+    %initial point 
+    v0 = struct;
+    v0.x  = [u0;v00;x0];
     
-   %initial point 
-   v0 = struct;
-   v0.x = x0c;
-   pars.rhoP = 1.e-6;
-   pars.rhoD = 1.e-6;
-   pars.rhoA = 1.e-7;
-   % call to coneopt:
-   R = coneopt(AA,bb,c,v0,K,pars);
+    pars.rhoP = 1.e-6;
+    pars.rhoD = 1.e-6;
+    pars.rhoA = 1.e-7;
+  
+    pars.echo   = 4;
+    pars.beta   = 0.99;
+    pars.trace  = 3;
+    pars.secord = 1; 
+   
+    pars.permuteM = 0;
+    % call to coneopt:
+    R = coneopt(AA,bb,c,v0,K,pars);
+ 
+    minentropy(P.A,P.b,ones(size(P.A,2),1),pars);
+
    results = {results{:},{P.name,R.dat.nkktsolves,R.status}}; 
    %Prepare the call to nscs long step 
    %Extract the problem data and build the problem structure
    problem = struct;
    problem.A = AA;
    problem.b = bb;
-   problem.c = c;
+   problem.c = cc;
+   
    %Problem parameters
    problem.m = size(AA,1);
    problem.n = size(AA,2);
@@ -105,10 +158,16 @@ clear all
    problem.print = 1;
    
    pars = set_default_pars_nscs_long_step(); 
-   pars.second_order = false;
-   pars.neigh = Inf;
-    x0f        = [];
-   %[xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,x0c,pars);
+   pars.solve_second_order = false;
+   pars.neigh = 0.99;
+
+   pars.stop_primal   = 1e-6;                 
+   pars.stop_dual     = 1e-6;
+   pars.stop_gap_res  = 1e-6; 
+   pars.stop_gap      = 1e-7;
+   pars.stop_tau_kappa= 1e-7;
+   x0f        = []; 
+   [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,v0.x,pars);
  end 
 
 res = results{1};

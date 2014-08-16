@@ -9,7 +9,7 @@ clear all
   load 'standard_form_indices.mat' 
 
   %Choose a problem from the list
-  problem_index = 2; 
+  problem_index = 4; 
   %Extract the problem 
   problem_uf_ix = st_ix(problem_index);
   %Get the problem from ufget
@@ -65,4 +65,6 @@ clear all
    v0.x = x0c;
    % call to coneopt:
    R = coneopt(problem.A,problem.b,problem.c,v0,K,pars);
+
+   
  

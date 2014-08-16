@@ -7,12 +7,13 @@ function pars = set_default_pars_nscs_long_step()
     pars.backtrack_affine_constant = 0.95;   %affine backtracking constant
 
     %xxx: changed from 0.98 for gp testing
-    pars.eta        = 0.98;                %multiple of step to the boundary
-    pars.stop_primal= 1e-7;                 %stopping criteria p_res/rel_p_res<stop_primal.
-    pars.stop_dual  = 1e-7;
+    pars.eta           = 0.98;                %multiple of step to the boundary
+    pars.stop_primal   = 1e-7;                 %stopping criteria p_res/rel_p_res<stop_primal.
+    pars.stop_dual     = 1e-7;
+    pars.stop_gap_res  = 1e-7;
     pars.stop_gap   = 1e-8;
     pars.stop_mu    = 1e-8;
-    pars.stop_tau_kappa = 1.e-5;
+    pars.stop_tau_kappa = 1.e-6;
     pars.solve_second_order = true;
 
     pars.print      = 1;                     %level of verbosity from 0 to 11
