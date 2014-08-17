@@ -20,7 +20,7 @@ function pars = set_default_pars_nscs_long_step()
     %regularization for the linear solver
     pars.delta      = 5e-10;
     pars.gamma      = 5e-10;
-    pars.max_iter_ref_rounds = 20;
+    pars.max_iter_ref_rounds = 5;
     pars.neigh      = 1.0;
 end
 

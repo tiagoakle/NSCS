@@ -21,15 +21,15 @@
   prob_name(find(prob_name=='/'))=' ';
   
   %Problem parameters
-  problem.m = size(P.A,1);
-  problem.n = size(P.A,2);
+  m = size(P.A,1);
+  n = size(P.A,2);
  
-  fprintf('Loaded problem %s, m:%i, n:%i\n',P.name,problem.m,problem.n);
+  fprintf('Loaded problem %s, m:%i, n:%i\n',P.name,m,n);
   pars = set_default_pars_nscs_long_step(); 
-  pars.second_order = false;
-  pars.neigh = 0.5; 
-  pars.stop_gap = 1.e-12; 
-  pars.print  = 4;
+  pars.solve_second_order = true;
+  
+  pars.print  = 2;
+
   x0f         = [];
   [xc] = minentropy_nscs(P.A,P.b,ones(size(P.A,2),1),pars);
 

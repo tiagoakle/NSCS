@@ -136,8 +136,6 @@ clear all
     % call to coneopt:
     R = coneopt(AA,bb,c,v0,K,pars);
  
-    minentropy(P.A,P.b,ones(size(P.A,2),1),pars);
-
    results = {results{:},{P.name,R.dat.nkktsolves,R.status}}; 
    %Prepare the call to nscs long step 
    %Extract the problem data and build the problem structure
@@ -155,7 +153,6 @@ clear all
    problem.n_soc_cones = 0;
    problem.n_sdp_cones = 0;
    problem.n_exp_cones   = n;
-   problem.print = 1;
    
    pars = set_default_pars_nscs_long_step(); 
    pars.solve_second_order = false;
@@ -166,6 +163,14 @@ clear all
    pars.stop_gap_res  = 1e-6; 
    pars.stop_gap      = 1e-7;
    pars.stop_tau_kappa= 1e-7;
+
+    pars.stop_primal   = 1e-7;                 %stopping criteria p_res/rel_p_res<stop_primal.
+    pars.stop_dual     = 1e-7;
+    pars.stop_gap_res  = 1e-7;
+    pars.stop_gap   = 1e-8;
+    pars.stop_tau_kappa = 1.e-7;
+
+   pars.print = 1;
    x0f        = []; 
    [xc,xf,y,s,t,k,info] = nscs_long_step(problem,x0f,v0.x,pars);
  end 
